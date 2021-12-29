@@ -103,9 +103,8 @@ theme: hexo-theme-Chic
 ## Docs: https://hexo.io/docs/one-command-deployment
 deploy:
   type: 'git'
-  repo: <repository url> #https://bitbucket.org/JohnSmith/johnsmith.bitbucket.io
-  branch: [branch]
-  message: [message]
+  repo: https://github.com/quguoliang/my-blog
+  branch: main
 
 search:
   path: search.xml
