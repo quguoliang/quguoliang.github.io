@@ -1,0 +1,25 @@
+@import 'partial/header.css';
+@import './category.css';
+
+body{
+  margin: 0 auto;
+  background-color: #F7F7F7;
+}
+
+.main-content{
+  margin: 0 auto;
+  padding: 24px;
+}
+
+@media screen and (max-width: 1440px) {
+  .main-content{
+    max-width: 1160px;
+    width: 100%;
+  }
+}
+@media screen and (min-width: 1440px) {
+  .main-content{
+    max-width: 1240px;
+    width: 100%;
+  }
+} 

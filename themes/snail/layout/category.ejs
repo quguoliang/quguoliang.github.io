@@ -1,0 +1,19 @@
+<% if(is_category()){ %>
+  <%- partial('_partial/category', {pagination: config.category, index: true}) %>
+<% }else{ %>
+<div class="category">
+  <%site.categories.forEach(category => { %>
+    <a class="category-item" href="<%- url_for(category.path) %>">
+      <header class="category-item-title"> 
+        <i class="iconfont icon-wenjian"></i>
+        <%- category.name %>
+      </header>
+      <% category.posts.forEach(post=>{ %>
+        <div>
+          <%- post.title %> 
+        </div>
+      <% }) %> 
+    </a>
+  <%})%> 
+</div>
+<% } %> 

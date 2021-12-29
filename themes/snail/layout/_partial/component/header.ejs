@@ -1,0 +1,29 @@
+<header class="header">
+  <div class="header-content">
+    <div class="header-left">
+      <div class="header-left-title">
+        <img src='<%- theme.header.avatar %>' class="header-left-avatar">
+        <span class="header-left-name"> <%- theme.header.name %> </span>
+      </div>
+      <div class="header-left-menu">
+        <% for (let i in theme.menu){ %>
+          <div class="left-menu-item">
+            <a class="menu-item-a" id="<% theme.menu[i] %> " href="<%- url_for(theme.menu[i]) %>"><%= i %></a>
+          </div>
+        <% } %>
+      </div>
+    </div>
+    <div class="header-right"  onclick="onChangeSunOrMoon()">
+      <i id="right-icon" class="iconfont icon-taiyang" ></i> 
+    </div>
+  </div>
+</header>
+<script>
+  var isDark = false;
+  function onChangeSunOrMoon(){
+    isDark = !isDark;
+    const rightEle =  document.getElementById('right-icon');
+    rightEle.style.transition = '0.5s';
+    rightEle.className = `iconfont ${ isDark ? 'icon-yejianmoshishenyemoshiyueliang' : 'icon-taiyang' }`;  
+  }
+</script>

@@ -1,0 +1,45 @@
+# Menu
+menu:
+  分类: /category
+  标签: /tag
+  时间轴: /timeline
+  搜索: /search
+  关于: /about
+
+
+# Miscellaneous
+favicon: /assets/favicon.png
+
+header:
+  avatar: /assets/personal.jpeg
+  name: 笑忘书
+
+# Ocean Video
+# Because I put videos in multiple formats on the same path, I just labeled the path here.
+ocean:
+  overlay: true
+  path: /images/ocean/
+  brand: /images/hexo-inverted.svg
+
+# Content
+excerpt_link: Read More...
+
+# MIIT ICP/IP/DOMAIN
+beian:
+  enable: true
+  number: ZHWANGART
+  url: https://beian.miit.gov.cn/
+
+
+# Tags
+show_count: false
+
+# Toc
+toc: true
+
+# fancybox
+fancybox: true
+
+# 是否显示复制按钮
+show_copy_btn: true
+
