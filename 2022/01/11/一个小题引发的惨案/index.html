@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+<meta name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+<meta http-equiv="X-UA-Compatible" content="ie=edge">
+
+    <meta name="author" content="quguoliang">
+
+
+
+
+
+<script src="/js/jquery-2.0.3.min.js"></script>
+
+
+<script src="/js/jquery.justifiedGallery.min.js"></script>
+
+
+<link type="text/css" rel="stylesheet" href="//at.alicdn.com/t/font_3061293_3k2vjqu792g.css">
+<title>一个小题引发的惨案 | 有点意思</title>
+
+
+
+    <link rel="icon" href="/smile.svg">
+
+
+
+
+    <!-- stylesheets list from _config.yml -->
+    
+    <link rel="stylesheet" href="/css/style.css">
+    
+
+
+
+    <!-- scripts list from _config.yml -->
+    
+    <script src="/js/script.js"></script>
+    
+    <script src="/js/tocbot.min.js"></script>
+    
+
+
+
+    
+    
+        
+    
+
+
+<meta name="generator" content="Hexo 5.4.0"></head>
+
+<body>
+    <script>
+        // this function is used to check current theme before page loaded.
+        (() => {
+            const currentTheme = window.localStorage && window.localStorage.getItem('theme') || '';
+            const isDark = currentTheme === 'dark';
+            const pagebody = document.getElementsByTagName('body')[0]
+            if (isDark) {
+                pagebody.classList.add('dark-theme');
+                // mobile
+                document.getElementById("mobile-toggle-theme").innerText = "· Dark"
+            } else {
+                pagebody.classList.remove('dark-theme');
+                // mobile
+                document.getElementById("mobile-toggle-theme").innerText = "· Light"
+            }
+        })();
+    </script>
+
+    <div class="wrapper">
+        <header>
+    <nav class="navbar">
+        <div class="container">
+            <div class="navbar-header header-logo"><a href="/">有点意思</a></div>
+            <div class="menu navbar-right">
+                
+                    <a class="menu-item" href="/category">分类</a>
+                
+                    <a class="menu-item" href="/archives">时间轴</a>
+                
+                    <a class="menu-item" href="/tag">标签</a>
+                
+                    <a class="menu-item" href="/about">关于</a>
+                
+                  <a class="menu-item menu-item-search" title="搜索">
+                    搜索
+                  </a>
+             
+                <input id="switch_default" type="checkbox" class="switch_default">
+                <label for="switch_default" class="toggleBtn"></label>
+            </div>
+        </div>
+    </nav>
+
+    
+    <nav class="navbar-mobile" id="nav-mobile">
+        <div class="container">
+            <div class="navbar-header">
+                <div>
+                    <a href="/">有点意思</a><a id="mobile-toggle-theme">·&nbsp;Light</a>
+                </div>
+                <div class="menu-toggle" onclick="mobileBtn()">&#9776; Menu</div>
+            </div>
+            <div class="menu" id="mobile-menu">
+                
+                    <a class="menu-item" href="/category">分类</a>
+                
+                    <a class="menu-item" href="/archives">时间轴</a>
+                
+                    <a class="menu-item" href="/tag">标签</a>
+                
+                    <a class="menu-item" href="/about">关于</a>
+                
+            </div>
+        </div>
+    </nav>
+    <div class="search-form-wrap">
+        <div class="local-search local-search-plugin">
+  <input type="search" id="local-search-input" class="local-search-input" placeholder="Search...">
+  <div id="local-search-result" class="local-search-result"></div>
+</div>
+    </div>
+</header>
+<script>
+    var mobileBtn = function f() {
+        var toggleMenu = document.getElementsByClassName("menu-toggle")[0];
+        var mobileMenu = document.getElementById("mobile-menu");
+        if(toggleMenu.classList.contains("active")){
+           toggleMenu.classList.remove("active")
+            mobileMenu.classList.remove("active")
+        }else{
+            toggleMenu.classList.add("active")
+            mobileMenu.classList.add("active")
+        }
+    }
+</script>
+            <div class="main">
+                <div class="container">
+    
+    
+        <div class="post-toc">
+    <div class="tocbot-list">
+    </div>
+    <div class="tocbot-list-menu">
+        <a class="tocbot-toc-expand" onclick="expand_toc()">全部</a>
+        <a onclick="go_bottom()">底部</a>
+    </div>
+    <i id='go-top' class="iconfont icon-huidaodingbu" style="display: none;" onclick="go_top()"></i>
+</div>
+
+<script>
+    let timer = null;
+    let beforeScrollTop = 0
+    window.addEventListener('scroll',(e)=>{
+        const afterScrollTop = document.documentElement.scrollTop
+        if(afterScrollTop>beforeScrollTop && timer){
+            clearInterval(timer)
+        }
+        const topEle = document.getElementById('go-top')
+        if(afterScrollTop > 100){
+            topEle.style.display='block'
+        }else{
+            topEle.style.display='none'
+        }
+        beforeScrollTop=afterScrollTop
+    })
+
+    document.ready(
+        function () {
+            tocbot.init({
+                tocSelector: '.tocbot-list',
+                contentSelector: '.post-content',
+                headingSelector: 'h1, h2, h3, h4, h5',
+                collapseDepth: 1,
+                orderedList: false,
+                scrollSmooth: true,
+            })
+        }
+    )
+
+    function expand_toc() {
+        var b = document.querySelector(".tocbot-toc-expand");
+        tocbot.init({
+            tocSelector: '.tocbot-list',
+            contentSelector: '.post-content',
+            headingSelector: 'h1, h2, h3, h4, h5',
+            collapseDepth: 6,
+            orderedList: false,
+            scrollSmooth: true,
+        });
+        b.setAttribute("onclick", "collapse_toc()");
+        b.innerHTML = "收起"
+    }
+
+    function collapse_toc() {
+        var b = document.querySelector(".tocbot-toc-expand");
+        tocbot.init({
+            tocSelector: '.tocbot-list',
+            contentSelector: '.post-content',
+            headingSelector: 'h1, h2, h3, h4, h5',
+            collapseDepth: 1,
+            orderedList: false,
+            scrollSmooth: true,
+        });
+        b.setAttribute("onclick", "expand_toc()");
+        b.innerHTML = "全部"
+    }
+
+    function go_top() {
+        timer=setInterval(function(){
+            var scrollTop=document.documentElement.scrollTop||document.body.scrollTop;
+            var ispeed=Math.floor(-scrollTop/6);
+            if(scrollTop==0){
+               clearInterval(timer);
+            }
+            document.documentElement.scrollTop=document.body.scrollTop=scrollTop+ispeed;
+        },30)
+        // window.scrollTo(0, 0);
+    }
+
+    function go_bottom() {
+        window.scrollTo(0, document.body.scrollHeight);
+    }
+
+</script>
+    
+
+    
+    <article class="post-wrap">
+        <header class="post-header">
+            <h1 class="post-title">一个小题引发的惨案</h1>
+            
+                <div class="post-meta">
+                    
+                        作者: <a itemprop="author" rel="author" href="/">quguoliang</a>
+                    
+
+                    
+                        <span class="post-time" style="margin:0 15px 0 15px;">
+                        日期: <a href="#">2022-01-11 , 星期二&nbsp;&nbsp;16:58:24</a>
+                        </span>
+                    
+                    
+                        <span class="post-category">
+                    分类:
+                            
+                                <a href="/categories/%E6%8A%80%E6%9C%AF%E6%96%87%E7%AB%A0/">技术文章</a>
+                            
+                        </span>
+                    
+                </div>
+            
+        </header>
+
+        <div class="post-content">
+            <p>今天逛社区的时候发现了一个题，看了一下感觉还挺有意思的，题目如下：</p>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Bar</span> </span>&#123;</span><br><span class="line">  <span class="function"><span class="title">constructor</span>(<span class="params"></span>)</span> &#123;</span><br><span class="line">    <span class="built_in">this</span>[<span class="built_in">Symbol</span>.toPrimitive] = <span class="function"><span class="keyword">function</span> (<span class="params">hint</span>) </span>&#123;</span><br><span class="line">      <span class="keyword">switch</span> (hint) &#123;</span><br><span class="line">        <span class="keyword">case</span> <span class="string">&#x27;number&#x27;</span>:</span><br><span class="line">          <span class="keyword">return</span> <span class="number">3</span></span><br><span class="line">        <span class="keyword">case</span> <span class="string">&#x27;string&#x27;</span>:</span><br><span class="line">          <span class="keyword">return</span> <span class="string">&#x27;string bar&#x27;</span></span><br><span class="line">        <span class="keyword">case</span> <span class="string">&#x27;default&#x27;</span>:</span><br><span class="line">        <span class="keyword">default</span>:</span><br><span class="line">          <span class="keyword">return</span> <span class="string">&#x27;default bar&#x27;</span></span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"><span class="keyword">let</span> bar = <span class="keyword">new</span> Bar()</span><br><span class="line"><span class="built_in">console</span>.log(<span class="number">3</span> + bar);</span><br><span class="line"><span class="built_in">console</span>.log(<span class="number">3</span> - bar);</span><br><span class="line"><span class="built_in">console</span>.log(<span class="built_in">String</span>(bar));</span><br></pre></td></tr></table></figure>
+<p>这题看着好像没什么，就是单纯的问打印结果，但是显然并不是这么简单，一般为打印结果的会有很多套头在里面，就比如网上流传的某公司必考的Promise、async执行顺序打印问题，哈哈哈，扯远了。好了我们直接先看一下这个题的答案是什么。</p>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">console</span>.log(<span class="number">3</span> + bar); <span class="comment">// 3default bar</span></span><br><span class="line"><span class="built_in">console</span>.log(<span class="number">3</span> - bar); <span class="comment">// 0</span></span><br><span class="line"><span class="built_in">console</span>.log(<span class="built_in">String</span>(bar)); <span class="comment">//string bar</span></span><br></pre></td></tr></table></figure>
+<p>有点奇怪，为啥会是这个结果？其实出现这个结果的原因有两个：隐式转换 + Symbol.toPrimitive特性。我们来分开谈谈；</p>
+<h3 id="隐式转换"><a href="#隐式转换" class="headerlink" title="隐式转换"></a>隐式转换</h3><p>首先是隐式转换，这个算是老生常谈的问题了，很多面试官也喜欢问这个问题。我们先把这个题目修改一下：</p>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Bar</span> </span>&#123;</span><br><span class="line">&#125;</span><br><span class="line"><span class="keyword">let</span> bar = <span class="keyword">new</span> Bar()</span><br><span class="line"><span class="built_in">console</span>.log(<span class="number">3</span> + bar); <span class="comment">//3[object Object]</span></span><br><span class="line"><span class="built_in">console</span>.log(<span class="number">3</span> - bar); <span class="comment">// NaN</span></span><br><span class="line"><span class="built_in">console</span>.log(<span class="built_in">String</span>(bar)); <span class="comment">//[object Object]</span></span><br></pre></td></tr></table></figure>
+<p>输出结果已经直接给了，我们一个一个看，先看第一个<em><strong>3+bar</strong></em>，js隐式转换中‘+’号有两个意义，一个是字符串连接符，一个数字运算符。这里面bar是一个对象，属于复杂数据类型，且运算符左侧为number类型，所以这个表达式会将number类型和复杂类型统一转换成string类型然后进行相加。我们主要看bar的准换，JavaScript在对<strong>复杂类型</strong>的隐式转换中会先调用<strong>valueOf()</strong> 方法，随后调用<strong>toString()</strong> 方法，所以最后结果是bar转换成’[object,Object]’，得出结果：3[object Object]。</p>
+<p><img src="https://p9-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/90ae9a8f7d104ced92da6049c51e26c1~tplv-k3u1fbpfcp-watermark.image" alt="image.png"></p>
+<p><strong>’3 - bar‘</strong> 中同理，不过这里面’-‘代表运算符，JavaScript在遇到减、乘、除的时候会先将非number类型转换为number类型。所以bar转换到string类型是没有办法比较的<br>，必需再走一步，将stirng==&gt;number，调用<strong>Number()</strong> 方法，得到NaN。NaN和任何数运算后都会得到NaN。</p>
+<p><img src="https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/7fb806e4f33649b2b1b91a04af868ce1~tplv-k3u1fbpfcp-watermark.image" alt="image.png"></p>
+<p>最后一个不用说了，<strong>String()</strong> 其作用是将对象的值转换为字符串，不过该方法的返回与单个对象的 toString() 返回值相同。</p>
+<p>OK，看完了几个结果，我们能大概理出来这三个打印中，bar分别代表什么类型，依次是string、number、string。</p>
+<h3 id="Symbol-toPrimitive"><a href="#Symbol-toPrimitive" class="headerlink" title="Symbol.toPrimitive"></a>Symbol.toPrimitive</h3><p>接下来看看Symbol.toPrimitive，<code>Symbol.toPrimitive</code> 是一个内置的 Symbol 值，它是作为对象的函数值属性存在的，当一个对象转换为对应的原始值时，会调用此函数。它的属性如下：</p>
+<blockquote>
+<p>在 <code>Symbol.toPrimitive</code> 属性(用作函数值)的帮助下，一个对象可被转换为原始值。该函数被调用时，会被传递一个字符串参数 <code>hint</code> ，表示要转换到的原始值的预期类型。 <code>hint</code> 参数的取值是 <code>&quot;number&quot;</code>、<code>&quot;string&quot;</code> 和 <code>&quot;default&quot;</code> 中的任意一个。</p>
+</blockquote>
+<p>其具体属性我就不多说了，<a target="_blank" rel="noopener" href="https://developer.mozilla.org/zh-CN/docs/Web/JavaScript/Reference/Global_Objects/Symbol/toPrimitive">这里</a>可以看.</p>
+<p><strong>console.log(3 + bar)：</strong> 这里经过上面的操作，我们知道bar会被转换成string类型，但是为什么经过Symbol.toPrimitive判断时候hint会是default呢？其实这里是因为’+‘号的原因，前面我们说过，’+‘号有两个意思，一个是<strong>运算操作符</strong> ，一个是<strong>字符串连接符</strong> Symbol.toPrimitive并不确定当前对象会转换成什么类型，所以会返回默认的default进行转换。</p>
+<p>而另外两个就很好说了，都会有明确的转换类型，所以<strong>console.log(3 - bar)</strong> 中的bar会被转换成3，结果也变成了0；<strong>console.log(String(bar))</strong> 中的bar转换成’string bar’，结果也变成了’string bar’。</p>
+<h3 id="总结一下"><a href="#总结一下" class="headerlink" title="总结一下"></a>总结一下</h3><p>主要记几个隐式转换的规则吧。</p>
+<p>1、一个主要小规则，一般情况下，逻辑判断最终需要转换成number类型进行判断，所以对象先转换成字符串，字符串在转换成number，Boolean直接转换成number，0-false、1-true。</p>
+<p><img src="https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/1dcb0104691e440499a1175f5ee08c37~tplv-k3u1fbpfcp-watermark.image" alt="image.png"></p>
+<p>2、‘+’号是比较特殊的，因为其可表运算和连接，所以可以根据以下判断</p>
+<ul>
+<li>  当一侧为<code>String</code>类型，被识别为字符串拼接，并会优先将另一侧转换为字符串类型。</li>
+<li>  当一侧为<code>Number</code>类型，另一侧为原始类型，则将原始类型转换为<code>Number</code>类型。</li>
+<li>  当一侧为<code>Number</code>类型，另一侧为引用类型，将引用类型和<code>Number</code>类型转换成字符串后拼接。</li>
+</ul>
+<p>剩下的一些特殊类型个例就不多记录了。</p>
+
+        </div>
+
+        
+        <section class="post-tags">
+            <div>
+                <span>标签:</span>
+                <span class="tag">
+                    
+                    
+                        <a href="/tags/es6/"># es6</a>
+                    
+                        <a href="/tags/Symbol/"># Symbol</a>
+                    
+                        <a href="/tags/Javascript/"># Javascript</a>
+                    
+                        
+                </span>
+            </div>
+            <div>
+                <a href="javascript:window.history.back();">返回</a>
+                <span>· </span>
+                <a href="/">首页</a>
+            </div>
+        </section>
+        <section class="post-nav">
+            
+                <a class="prev" rel="prev" href="/2022/01/12/%E5%87%8F%E8%82%A5%E6%97%A5%E8%AE%B07/">减肥日记7</a>
+            
+            
+            <a class="next" rel="next" href="/2022/01/11/%E5%87%8F%E8%82%A5%E6%97%A5%E8%AE%B06/">减肥日记6</a>
+            
+        </section>
+
+
+    </article>
+</div>
+
+            </div>
+            <footer id="footer" class="footer">
+    <div class="copyright">
+        <span>© quguoliang</span>
+    </div>
+</footer>
+
+    </div>
+    
+<script src="/js/search.js"></script>
+
+</body>
+
+</html>

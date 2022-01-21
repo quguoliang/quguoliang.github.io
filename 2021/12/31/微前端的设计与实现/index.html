@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+<meta name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+<meta http-equiv="X-UA-Compatible" content="ie=edge">
+
+    <meta name="author" content="quguoliang">
+
+
+
+
+
+<script src="/js/jquery-2.0.3.min.js"></script>
+
+
+<script src="/js/jquery.justifiedGallery.min.js"></script>
+
+
+<link type="text/css" rel="stylesheet" href="//at.alicdn.com/t/font_3061293_3k2vjqu792g.css">
+<title>微前端的设计与实现 | 有点意思</title>
+
+
+
+    <link rel="icon" href="/smile.svg">
+
+
+
+
+    <!-- stylesheets list from _config.yml -->
+    
+    <link rel="stylesheet" href="/css/style.css">
+    
+
+
+
+    <!-- scripts list from _config.yml -->
+    
+    <script src="/js/script.js"></script>
+    
+    <script src="/js/tocbot.min.js"></script>
+    
+
+
+
+    
+    
+        
+    
+
+
+<meta name="generator" content="Hexo 5.4.0"></head>
+
+<body>
+    <script>
+        // this function is used to check current theme before page loaded.
+        (() => {
+            const currentTheme = window.localStorage && window.localStorage.getItem('theme') || '';
+            const isDark = currentTheme === 'dark';
+            const pagebody = document.getElementsByTagName('body')[0]
+            if (isDark) {
+                pagebody.classList.add('dark-theme');
+                // mobile
+                document.getElementById("mobile-toggle-theme").innerText = "· Dark"
+            } else {
+                pagebody.classList.remove('dark-theme');
+                // mobile
+                document.getElementById("mobile-toggle-theme").innerText = "· Light"
+            }
+        })();
+    </script>
+
+    <div class="wrapper">
+        <header>
+    <nav class="navbar">
+        <div class="container">
+            <div class="navbar-header header-logo"><a href="/">有点意思</a></div>
+            <div class="menu navbar-right">
+                
+                    <a class="menu-item" href="/category">分类</a>
+                
+                    <a class="menu-item" href="/archives">时间轴</a>
+                
+                    <a class="menu-item" href="/tag">标签</a>
+                
+                    <a class="menu-item" href="/about">关于</a>
+                
+                  <a class="menu-item menu-item-search" title="搜索">
+                    搜索
+                  </a>
+             
+                <input id="switch_default" type="checkbox" class="switch_default">
+                <label for="switch_default" class="toggleBtn"></label>
+            </div>
+        </div>
+    </nav>
+
+    
+    <nav class="navbar-mobile" id="nav-mobile">
+        <div class="container">
+            <div class="navbar-header">
+                <div>
+                    <a href="/">有点意思</a><a id="mobile-toggle-theme">·&nbsp;Light</a>
+                </div>
+                <div class="menu-toggle" onclick="mobileBtn()">&#9776; Menu</div>
+            </div>
+            <div class="menu" id="mobile-menu">
+                
+                    <a class="menu-item" href="/category">分类</a>
+                
+                    <a class="menu-item" href="/archives">时间轴</a>
+                
+                    <a class="menu-item" href="/tag">标签</a>
+                
+                    <a class="menu-item" href="/about">关于</a>
+                
+            </div>
+        </div>
+    </nav>
+    <div class="search-form-wrap">
+        <div class="local-search local-search-plugin">
+  <input type="search" id="local-search-input" class="local-search-input" placeholder="Search...">
+  <div id="local-search-result" class="local-search-result"></div>
+</div>
+    </div>
+</header>
+<script>
+    var mobileBtn = function f() {
+        var toggleMenu = document.getElementsByClassName("menu-toggle")[0];
+        var mobileMenu = document.getElementById("mobile-menu");
+        if(toggleMenu.classList.contains("active")){
+           toggleMenu.classList.remove("active")
+            mobileMenu.classList.remove("active")
+        }else{
+            toggleMenu.classList.add("active")
+            mobileMenu.classList.add("active")
+        }
+    }
+</script>
+            <div class="main">
+                <div class="container">
+    
+    
+        <div class="post-toc">
+    <div class="tocbot-list">
+    </div>
+    <div class="tocbot-list-menu">
+        <a class="tocbot-toc-expand" onclick="expand_toc()">全部</a>
+        <a onclick="go_bottom()">底部</a>
+    </div>
+    <i id='go-top' class="iconfont icon-huidaodingbu" style="display: none;" onclick="go_top()"></i>
+</div>
+
+<script>
+    let timer = null;
+    let beforeScrollTop = 0
+    window.addEventListener('scroll',(e)=>{
+        const afterScrollTop = document.documentElement.scrollTop
+        if(afterScrollTop>beforeScrollTop && timer){
+            clearInterval(timer)
+        }
+        const topEle = document.getElementById('go-top')
+        if(afterScrollTop > 100){
+            topEle.style.display='block'
+        }else{
+            topEle.style.display='none'
+        }
+        beforeScrollTop=afterScrollTop
+    })
+
+    document.ready(
+        function () {
+            tocbot.init({
+                tocSelector: '.tocbot-list',
+                contentSelector: '.post-content',
+                headingSelector: 'h1, h2, h3, h4, h5',
+                collapseDepth: 1,
+                orderedList: false,
+                scrollSmooth: true,
+            })
+        }
+    )
+
+    function expand_toc() {
+        var b = document.querySelector(".tocbot-toc-expand");
+        tocbot.init({
+            tocSelector: '.tocbot-list',
+            contentSelector: '.post-content',
+            headingSelector: 'h1, h2, h3, h4, h5',
+            collapseDepth: 6,
+            orderedList: false,
+            scrollSmooth: true,
+        });
+        b.setAttribute("onclick", "collapse_toc()");
+        b.innerHTML = "收起"
+    }
+
+    function collapse_toc() {
+        var b = document.querySelector(".tocbot-toc-expand");
+        tocbot.init({
+            tocSelector: '.tocbot-list',
+            contentSelector: '.post-content',
+            headingSelector: 'h1, h2, h3, h4, h5',
+            collapseDepth: 1,
+            orderedList: false,
+            scrollSmooth: true,
+        });
+        b.setAttribute("onclick", "expand_toc()");
+        b.innerHTML = "全部"
+    }
+
+    function go_top() {
+        timer=setInterval(function(){
+            var scrollTop=document.documentElement.scrollTop||document.body.scrollTop;
+            var ispeed=Math.floor(-scrollTop/6);
+            if(scrollTop==0){
+               clearInterval(timer);
+            }
+            document.documentElement.scrollTop=document.body.scrollTop=scrollTop+ispeed;
+        },30)
+        // window.scrollTo(0, 0);
+    }
+
+    function go_bottom() {
+        window.scrollTo(0, document.body.scrollHeight);
+    }
+
+</script>
+    
+
+    
+    <article class="post-wrap">
+        <header class="post-header">
+            <h1 class="post-title">微前端的设计与实现</h1>
+            
+                <div class="post-meta">
+                    
+                        作者: <a itemprop="author" rel="author" href="/">quguoliang</a>
+                    
+
+                    
+                        <span class="post-time" style="margin:0 15px 0 15px;">
+                        日期: <a href="#">2021-12-31 , 星期五&nbsp;&nbsp;10:54:44</a>
+                        </span>
+                    
+                    
+                        <span class="post-category">
+                    分类:
+                            
+                                <a href="/categories/%E6%8A%80%E6%9C%AF%E6%96%87%E7%AB%A0/">技术文章</a>
+                            
+                        </span>
+                    
+                </div>
+            
+        </header>
+
+        <div class="post-content">
+            <section id="nice" data-tool="mdnice编辑器" data-website="https://www.mdnice.com" style="font-size: 16px; padding: 0 10px; word-spacing: 0px; word-break: break-word; word-wrap: break-word; text-align: left; line-height: 1.35; color: #333; font-family: Optima-Regular, PingFangTC-light; letter-spacing: 1.5px;"><p data-tool="mdnice编辑器" style="padding-top: 8px; padding-bottom: 8px; line-height: 26px; color: #2b2b2b; margin: 10px 0px; letter-spacing: 2px; font-size: 16px; word-spacing: 2px;">微前端最早由ThoughtWorks在2016年提出，其主要思想是在前端引入类似后端微服务架构的理念，将庞大的巨石应用拆分成多个独立的应用（以下称微应用）。每个独立应用都可独立开发、测试和部署，然后在通过一个容器应用（以下称主应用）将所有独立应用组合起来呈现个用户。</p>
+<p data-tool="mdnice编辑器" style="padding-top: 8px; padding-bottom: 8px; line-height: 26px; color: #2b2b2b; margin: 10px 0px; letter-spacing: 2px; font-size: 16px; word-spacing: 2px;">实现微前端的方式有很多种，我们熟知的iframe其实就属于微前端，其具有自带沙箱隔离，开发分离等优点，但是同时也有很多额外的问题，重复加载脚本、SEO较差、多个滚动条等等问题导致其无法广泛应用。而现代SPA框架的兴起给微前端带来了新的福音，结合SPA路由形式去加载指定的子应用，如此就可以实现一个微前端的架构。</p>
+<p data-tool="mdnice编辑器" style="padding-top: 8px; padding-bottom: 8px; line-height: 26px; color: #2b2b2b; margin: 10px 0px; letter-spacing: 2px; font-size: 16px; word-spacing: 2px;">不过实现微前端架构还需要解决以下几个问题：</p>
+<ul data-tool="mdnice编辑器" style="margin-top: 8px; margin-bottom: 8px; padding-left: 25px; font-size: 15px; color: #595959; list-style-type: circle;">
+<li><section style="margin-top: 5px; margin-bottom: 5px; line-height: 26px; text-align: left; font-size: 16px; font-weight: normal; color: #595959;">如何实现路由分发应用。</section></li><li><section style="margin-top: 5px; margin-bottom: 5px; line-height: 26px; text-align: left; font-size: 16px; font-weight: normal; color: #595959;">如何控制微应用加载、卸载。</section></li><li><section style="margin-top: 5px; margin-bottom: 5px; line-height: 26px; text-align: left; font-size: 16px; font-weight: normal; color: #595959;">微应用通过什么形式传递给主应用。</section></li><li><section style="margin-top: 5px; margin-bottom: 5px; line-height: 26px; text-align: left; font-size: 16px; font-weight: normal; color: #595959;">微应用之间的如何进行数据共享。</section></li><li><section style="margin-top: 5px; margin-bottom: 5px; line-height: 26px; text-align: left; font-size: 16px; font-weight: normal; color: #595959;">微应用之间如何做到互不影响。</section></li></ul>
+<h2 data-tool="mdnice编辑器" style="margin-top: 30px; margin-bottom: 15px; padding: 0px; font-weight: bold; color: black; font-size: 22px; display: block; border-bottom: 4px solid #4CAF50;"><span class="prefix" style="display: none;"></span><span class="content" style="display: flex; color: #4CAF50; font-size: 20px;">一、通过路由分发应用</span><span class="suffix" style="display: flex; box-sizing: border-box; width: 20px; height: 10px; border-top-left-radius: 20px; border-top-right-radius: 20px; background: RGBA(76, 175, 80, .5); color: rgb(255, 255, 255); font-size: 16px; letter-spacing: 0.544px; justify-content: flex-end; float: right; margin-top: -10px; box-sizing: border-box !important; overflow-wrap: break-word !important;"></span></h2>
+<p data-tool="mdnice编辑器" style="padding-top: 8px; padding-bottom: 8px; line-height: 26px; color: #2b2b2b; margin: 10px 0px; letter-spacing: 2px; font-size: 16px; word-spacing: 2px;">在SPA中，路由是通过框架来进行分发的，框架通过路由分发指定到具体的某个组件进行展示；在微前端架构中，微前端承接了框架的工作，通过路由去匹配对应的应用，在由应用去分发到对应的组件上。
+从实现方式上来看，微前端的路由设计与前端路由解决方案如react-router、vue-router等也并无较大的区别，都是通过劫持路由进行实现，简单的代码实现：</p>
+<pre class="custom" data-tool="mdnice编辑器" style="margin-top: 10px; margin-bottom: 10px; border-radius: 5px; box-shadow: rgba(0, 0, 0, 0.55) 0px 2px 10px;"><span style="display: block; background: url(https://files.mdnice.com/point.png); height: 30px; width: 100%; background-size: 40px; background-repeat: no-repeat; background-color: #282c34; margin-bottom: -7px; border-radius: 5px; background-position: 10px 10px;"></span><code class="hljs" style="overflow-x: auto; padding: 16px; color: #abb2bf; display: block; font-family: Operator Mono, Consolas, Monaco, Menlo, monospace; font-size: 12px; -webkit-overflow-scrolling: touch; letter-spacing: 0px; padding-top: 15px; background: #282c34; border-radius: 5px;"><span class="hljs-comment" style="color: #5c6370; font-style: italic; line-height: 26px;">/* 处理更新微应用方法 */</span>
+<span/><span class="hljs-function" style="line-height: 26px;"><span class="hljs-keyword" style="color: #c678dd; line-height: 26px;">function</span> <span class="hljs-title" style="color: #61aeee; line-height: 26px;">reroute</span> (<span class="hljs-params" style="line-height: 26px;"></span>) </span>&#123;
+<span/> <span class="hljs-comment" style="color: #5c6370; font-style: italic; line-height: 26px;">// <span class="hljs-doctag" style="color: #c678dd; line-height: 26px;">TODO:</span></span>
+<span/>&#125;
+<span/><span class="hljs-comment" style="color: #5c6370; font-style: italic; line-height: 26px;">/* 监听路由变化,触发更新微应用方法 */</span>
+<span/><span class="hljs-built_in" style="color: #e6c07b; line-height: 26px;">window</span>.addEventListener(<span class="hljs-string" style="color: #98c379; line-height: 26px;">'hashchange'</span>, reroute)
+<span/><span class="hljs-built_in" style="color: #e6c07b; line-height: 26px;">window</span>.addEventListener(<span class="hljs-string" style="color: #98c379; line-height: 26px;">"popstate"</span>, reroute);
+<span/><span class="hljs-built_in" style="color: #e6c07b; line-height: 26px;">window</span>.history.pushState = patchedUpdateState(<span class="hljs-built_in" style="color: #e6c07b; line-height: 26px;">window</span>.history.pushState)
+<span/><span class="hljs-built_in" style="color: #e6c07b; line-height: 26px;">window</span>.history.replaceState = patchedUpdateState(<span class="hljs-built_in" style="color: #e6c07b; line-height: 26px;">window</span>.history.replaceState)
+<span/>
+<span/><span class="hljs-comment" style="color: #5c6370; font-style: italic; line-height: 26px;">/* 增强pushState和replaceState */</span>
+<span/><span class="hljs-function" style="line-height: 26px;"><span class="hljs-keyword" style="color: #c678dd; line-height: 26px;">function</span> <span class="hljs-title" style="color: #61aeee; line-height: 26px;">patchedUpdateState</span> (<span class="hljs-params" style="line-height: 26px;">updateState</span>) </span>&#123;
+<span/>  <span class="hljs-keyword" style="color: #c678dd; line-height: 26px;">return</span> <span class="hljs-function" style="line-height: 26px;"><span class="hljs-keyword" style="color: #c678dd; line-height: 26px;">function</span> (<span class="hljs-params" style="line-height: 26px;">...args</span>) </span>&#123;
+<span/>    <span class="hljs-comment" style="color: #5c6370; font-style: italic; line-height: 26px;">// 当前url</span>
+<span/>    <span class="hljs-keyword" style="color: #c678dd; line-height: 26px;">const</span> urlBefore = <span class="hljs-built_in" style="color: #e6c07b; line-height: 26px;">window</span>.location.href;
+<span/>    <span class="hljs-comment" style="color: #5c6370; font-style: italic; line-height: 26px;">// pushState or replaceState 的执行结果</span>
+<span/>    <span class="hljs-keyword" style="color: #c678dd; line-height: 26px;">const</span> result = Reflect.apply(updateState, <span class="hljs-keyword" style="color: #c678dd; line-height: 26px;">this</span>, args)
+<span/>    <span class="hljs-comment" style="color: #5c6370; font-style: italic; line-height: 26px;">// 执行updateState之后的url</span>
+<span/>    <span class="hljs-keyword" style="color: #c678dd; line-height: 26px;">const</span> urlAfter = <span class="hljs-built_in" style="color: #e6c07b; line-height: 26px;">window</span>.location.href
+<span/>    <span class="hljs-keyword" style="color: #c678dd; line-height: 26px;">if</span> (urlBefore !== urlAfter) &#123;
+<span/>      reroute()
+<span/>    &#125;
+<span/>    <span class="hljs-keyword" style="color: #c678dd; line-height: 26px;">return</span> result
+<span/>  &#125;
+<span/>&#125;
+<span/>
+<span/></code></pre>
+<p data-tool="mdnice编辑器" style="padding-top: 8px; padding-bottom: 8px; line-height: 26px; color: #2b2b2b; margin: 10px 0px; letter-spacing: 2px; font-size: 16px; word-spacing: 2px;">以上可以看到监听了hashchange和popstate的变化，同时通过装饰器模式向pushState和replaceState方法添加了判断逻辑，确保当路由发生变化的时候执行reRoute方法去处理更新微应用状态，那么如何处理微应用状态呢？</p>
+<h2 data-tool="mdnice编辑器" style="margin-top: 30px; margin-bottom: 15px; padding: 0px; font-weight: bold; color: black; font-size: 22px; display: block; border-bottom: 4px solid #4CAF50;"><span class="prefix" style="display: none;"></span><span class="content" style="display: flex; color: #4CAF50; font-size: 20px;">二、通过生命周期控制应用加载、卸载</span><span class="suffix" style="display: flex; box-sizing: border-box; width: 20px; height: 10px; border-top-left-radius: 20px; border-top-right-radius: 20px; background: RGBA(76, 175, 80, .5); color: rgb(255, 255, 255); font-size: 16px; letter-spacing: 0.544px; justify-content: flex-end; float: right; margin-top: -10px; box-sizing: border-box !important; overflow-wrap: break-word !important;"></span></h2>
+<p data-tool="mdnice编辑器" style="padding-top: 8px; padding-bottom: 8px; line-height: 26px; color: #2b2b2b; margin: 10px 0px; letter-spacing: 2px; font-size: 16px; word-spacing: 2px;">我们先来看一下微应用的注册结构，根据结构反看实现比较容易理解。</p>
+<pre class="custom" data-tool="mdnice编辑器" style="margin-top: 10px; margin-bottom: 10px; border-radius: 5px; box-shadow: rgba(0, 0, 0, 0.55) 0px 2px 10px;"><span style="display: block; background: url(https://files.mdnice.com/point.png); height: 30px; width: 100%; background-size: 40px; background-repeat: no-repeat; background-color: #282c34; margin-bottom: -7px; border-radius: 5px; background-position: 10px 10px;"></span><code class="hljs" style="overflow-x: auto; padding: 16px; color: #abb2bf; display: block; font-family: Operator Mono, Consolas, Monaco, Menlo, monospace; font-size: 12px; -webkit-overflow-scrolling: touch; letter-spacing: 0px; padding-top: 15px; background: #282c34; border-radius: 5px;"><span class="hljs-comment" style="color: #5c6370; font-style: italic; line-height: 26px;">// 微应用注册结构</span>
+<span/>&#123;
+<span/>    <span class="hljs-comment" style="color: #5c6370; font-style: italic; line-height: 26px;">// 微应用名称</span>
+<span/>    name: <span class="hljs-string" style="color: #98c379; line-height: 26px;">'app1'</span>,
+<span/>    <span class="hljs-comment" style="color: #5c6370; font-style: italic; line-height: 26px;">// 微应用加载函数，是一个promise</span>
+<span/>    app: loadApp(<span class="hljs-string" style="color: #98c379; line-height: 26px;">'http://localhost:8081'</span>, <span class="hljs-string" style="color: #98c379; line-height: 26px;">'app1'</span>),
+<span/>    <span class="hljs-comment" style="color: #5c6370; font-style: italic; line-height: 26px;">// 当路由满足条件时，去挂载子应用</span>
+<span/>    activeWhen: <span class="hljs-function" style="line-height: 26px;"><span class="hljs-params" style="line-height: 26px;">location</span> =&gt;</span> location.pathname.startsWith(<span class="hljs-string" style="color: #98c379; line-height: 26px;">'/app1'</span>),
+<span/>    <span class="hljs-comment" style="color: #5c6370; font-style: italic; line-height: 26px;">// 传递给微应用的对象</span>
+<span/>    customProps: &#123;&#125;
+<span/>&#125;
+<span/></code></pre>
+<p data-tool="mdnice编辑器" style="padding-top: 8px; padding-bottom: 8px; line-height: 26px; color: #2b2b2b; margin: 10px 0px; letter-spacing: 2px; font-size: 16px; word-spacing: 2px;">根据SPA框架我们能够发现，框架中通过生命周期用来控制组件加载卸载，Single-spa也是从中获得的灵感，用生命周期来控制微应用，根据状态可以分为一下几种状态：</p>
+<pre class="custom" data-tool="mdnice编辑器" style="margin-top: 10px; margin-bottom: 10px; border-radius: 5px; box-shadow: rgba(0, 0, 0, 0.55) 0px 2px 10px;"><span style="display: block; background: url(https://files.mdnice.com/point.png); height: 30px; width: 100%; background-size: 40px; background-repeat: no-repeat; background-color: #282c34; margin-bottom: -7px; border-radius: 5px; background-position: 10px 10px;"></span><code class="hljs" style="overflow-x: auto; padding: 16px; color: #abb2bf; display: block; font-family: Operator Mono, Consolas, Monaco, Menlo, monospace; font-size: 12px; -webkit-overflow-scrolling: touch; letter-spacing: 0px; padding-top: 15px; background: #282c34; border-radius: 5px;"><span class="hljs-comment" style="color: #5c6370; font-style: italic; line-height: 26px;">// 子应用注册以后的初始状态</span>
+<span/><span class="hljs-keyword" style="color: #c678dd; line-height: 26px;">const</span> NOT_LOADED = <span class="hljs-string" style="color: #98c379; line-height: 26px;">'NOT_LOADED'</span>
+<span/><span class="hljs-comment" style="color: #5c6370; font-style: italic; line-height: 26px;">// 表示正在加载子应用源代码</span>
+<span/><span class="hljs-keyword" style="color: #c678dd; line-height: 26px;">const</span> LOADING_SOURCE_CODE = <span class="hljs-string" style="color: #98c379; line-height: 26px;">'LOADING_SOURCE_CODE'</span>
+<span/><span class="hljs-comment" style="color: #5c6370; font-style: italic; line-height: 26px;">// 执行完 app.loadApp，即子应用加载完以后的状态</span>
+<span/><span class="hljs-keyword" style="color: #c678dd; line-height: 26px;">const</span> NOT_BOOTSTRAPPED = <span class="hljs-string" style="color: #98c379; line-height: 26px;">'NOT_BOOTSTRAPPED'</span>
+<span/><span class="hljs-comment" style="color: #5c6370; font-style: italic; line-height: 26px;">// 正在初始化</span>
+<span/><span class="hljs-keyword" style="color: #c678dd; line-height: 26px;">const</span> BOOTSTRAPPING = <span class="hljs-string" style="color: #98c379; line-height: 26px;">'BOOTSTRAPPING'</span>
+<span/><span class="hljs-comment" style="color: #5c6370; font-style: italic; line-height: 26px;">// 执行 app.bootstrap 之后的状态，表是初始化完成，处于未挂载的状态</span>
+<span/><span class="hljs-keyword" style="color: #c678dd; line-height: 26px;">const</span> NOT_MOUNTED = <span class="hljs-string" style="color: #98c379; line-height: 26px;">'NOT_MOUNTED'</span>
+<span/><span class="hljs-comment" style="color: #5c6370; font-style: italic; line-height: 26px;">// 正在挂载</span>
+<span/><span class="hljs-keyword" style="color: #c678dd; line-height: 26px;">const</span> MOUNTING = <span class="hljs-string" style="color: #98c379; line-height: 26px;">'MOUNTING'</span>
+<span/><span class="hljs-comment" style="color: #5c6370; font-style: italic; line-height: 26px;">// 挂载完成，app.mount 执行完毕</span>
+<span/><span class="hljs-keyword" style="color: #c678dd; line-height: 26px;">const</span> MOUNTED = <span class="hljs-string" style="color: #98c379; line-height: 26px;">'MOUNTED'</span>
+<span/><span class="hljs-keyword" style="color: #c678dd; line-height: 26px;">const</span> UPDATING = <span class="hljs-string" style="color: #98c379; line-height: 26px;">'UPDATING'</span>
+<span/><span class="hljs-comment" style="color: #5c6370; font-style: italic; line-height: 26px;">// 正在卸载</span>
+<span/><span class="hljs-keyword" style="color: #c678dd; line-height: 26px;">const</span> UNMOUNTING = <span class="hljs-string" style="color: #98c379; line-height: 26px;">'UNMOUNTING'</span>
+<span/>...
+<span/></code></pre>
+<p data-tool="mdnice编辑器" style="padding-top: 8px; padding-bottom: 8px; line-height: 26px; color: #2b2b2b; margin: 10px 0px; letter-spacing: 2px; font-size: 16px; word-spacing: 2px;">微应用在注册时会被统一加入一个status参数用来标记当前应用状态，初始值为NOT_LOADED，然后根据加载的不同时机以及微应用的状态进行不同的状态区分，可以分为三大类（实际情况会更多）：待加载、待挂载和待卸载，根据三种状态执行不同的操作。</p>
+<p data-tool="mdnice编辑器" style="padding-top: 8px; padding-bottom: 8px; line-height: 26px; color: #2b2b2b; margin: 10px 0px; letter-spacing: 2px; font-size: 16px; word-spacing: 2px;">除此之外，为了能够将微前端生命周期与微应用声明周期关联起来，我们就需要获取到微应用的声明周期供我们使用，所以在子应用中我们采用umd这种兼容性更好的打包模块格式打包，在子应用中export生命周期挂载在global上，然后我们根据微应用的注册结构的app参数就可以拿到微应用暴露出来的生命周期，将微应用的生命周期一同加入微应用配置文件中就具备了所有可操作条件，下面看一下如何处理不同状态的微应用：</p>
+<pre class="custom" data-tool="mdnice编辑器" style="margin-top: 10px; margin-bottom: 10px; border-radius: 5px; box-shadow: rgba(0, 0, 0, 0.55) 0px 2px 10px;"><span style="display: block; background: url(https://files.mdnice.com/point.png); height: 30px; width: 100%; background-size: 40px; background-repeat: no-repeat; background-color: #282c34; margin-bottom: -7px; border-radius: 5px; background-position: 10px 10px;"></span><code class="hljs" style="overflow-x: auto; padding: 16px; color: #abb2bf; display: block; font-family: Operator Mono, Consolas, Monaco, Menlo, monospace; font-size: 12px; -webkit-overflow-scrolling: touch; letter-spacing: 0px; padding-top: 15px; background: #282c34; border-radius: 5px;"><span class="hljs-function" style="line-height: 26px;"><span class="hljs-keyword" style="color: #c678dd; line-height: 26px;">function</span> <span class="hljs-title" style="color: #61aeee; line-height: 26px;">reroute</span>(<span class="hljs-params" style="line-height: 26px;"></span>)</span>&#123;
+<span/> <span class="hljs-comment" style="color: #5c6370; font-style: italic; line-height: 26px;">// 将微应用根据状态分为三类</span>
+<span/>  <span class="hljs-keyword" style="color: #c678dd; line-height: 26px;">const</span> &#123; appsToLoad, appsToMount, appsToUnmount &#125; =   getAppChanges()
+<span/>  <span class="hljs-keyword" style="color: #c678dd; line-height: 26px;">if</span> (isStarted) &#123;
+<span/>    performAppChanges()
+<span/>  &#125; <span class="hljs-keyword" style="color: #c678dd; line-height: 26px;">else</span> &#123;
+<span/>    loadApps()
+<span/>  &#125;
+<span/>  <span class="hljs-function" style="line-height: 26px;"><span class="hljs-keyword" style="color: #c678dd; line-height: 26px;">function</span> <span class="hljs-title" style="color: #61aeee; line-height: 26px;">loadApps</span> (<span class="hljs-params" style="line-height: 26px;"></span>) </span>&#123;
+<span/>    appsToLoad.map(toLoad)
+<span/>  &#125;
+<span/>  <span class="hljs-function" style="line-height: 26px;"><span class="hljs-keyword" style="color: #c678dd; line-height: 26px;">function</span> <span class="hljs-title" style="color: #61aeee; line-height: 26px;">performAppChanges</span> (<span class="hljs-params" style="line-height: 26px;"></span>) </span>&#123;
+<span/>    <span class="hljs-comment" style="color: #5c6370; font-style: italic; line-height: 26px;">// 卸载</span>
+<span/>    appsToUnmount.map(toUnmount)
+<span/>    <span class="hljs-comment" style="color: #5c6370; font-style: italic; line-height: 26px;">// 初始化 + 挂载</span>
+<span/>    appsToMount.map(tryToBoostrapAndMount)
+<span/>  &#125;
+<span/>&#125;
+<span/></code></pre>
+<p data-tool="mdnice编辑器" style="padding-top: 8px; padding-bottom: 8px; line-height: 26px; color: #2b2b2b; margin: 10px 0px; letter-spacing: 2px; font-size: 16px; word-spacing: 2px;">getAppChanges方法通过循环区分出三种状态微应用，然后根据isStarted用来判断是否微应用已经加载，对于未加载的微应用进行加载，已经加载的子应用根据状态执行对应微应用配置文件中的生命周期加载、卸载。
+至此，我们具备了一个微前端的基本形式。</p>
+<h2 data-tool="mdnice编辑器" style="margin-top: 30px; margin-bottom: 15px; padding: 0px; font-weight: bold; color: black; font-size: 22px; display: block; border-bottom: 4px solid #4CAF50;"><span class="prefix" style="display: none;"></span><span class="content" style="display: flex; color: #4CAF50; font-size: 20px;">三、微应用通过什么形式提供渲染入口</span><span class="suffix" style="display: flex; box-sizing: border-box; width: 20px; height: 10px; border-top-left-radius: 20px; border-top-right-radius: 20px; background: RGBA(76, 175, 80, .5); color: rgb(255, 255, 255); font-size: 16px; letter-spacing: 0.544px; justify-content: flex-end; float: right; margin-top: -10px; box-sizing: border-box !important; overflow-wrap: break-word !important;"></span></h2>
+<p data-tool="mdnice编辑器" style="padding-top: 8px; padding-bottom: 8px; line-height: 26px; color: #2b2b2b; margin: 10px 0px; letter-spacing: 2px; font-size: 16px; word-spacing: 2px;">微前端架构中要想做到技术无关和独立部署，那么采用运行时引入肯定是最佳的方案，但是微应用要提供什么形式的资源作为入口提供给主应用呢？目前有两种方案，一种是通过js引入，single-spa就是采用的该方法，一种是根据html引入，qiankun采用的方法。下面对比一下两种方案：</p>
+<p data-tool="mdnice编辑器" style="padding-top: 8px; padding-bottom: 8px; line-height: 26px; color: #2b2b2b; margin: 10px 0px; letter-spacing: 2px; font-size: 16px; word-spacing: 2px;">通过js方式引入，通常需要微应用将资源打成一个 entry script，这种情况下就会出现颇多限制，比如单个js包过大，资源并行加载等特性也无法利用。同时在js 引入方案中，主框架需要在微应用加载之前构建好相应的容器节点，然后将获取到的微应用注入构建好的节点中完成渲染。</p>
+<p data-tool="mdnice编辑器" style="padding-top: 8px; padding-bottom: 8px; line-height: 26px; color: #2b2b2b; margin: 10px 0px; letter-spacing: 2px; font-size: 16px; word-spacing: 2px;">通过html形式引入，该方式较为灵活，主框架通过fetch html方式获取到子应用的静态资源，同时将 HTML document 作为子节点塞到主框架的容器中。这样不仅可以极大的减少主应用的接入成本，子应用的开发方式及打包方式基本上也不需要调整，而且可以天然的解决子应用之间样式隔离的问题。</p>
+<h2 data-tool="mdnice编辑器" style="margin-top: 30px; margin-bottom: 15px; padding: 0px; font-weight: bold; color: black; font-size: 22px; display: block; border-bottom: 4px solid #4CAF50;"><span class="prefix" style="display: none;"></span><span class="content" style="display: flex; color: #4CAF50; font-size: 20px;">四、微应用之间的数据共享</span><span class="suffix" style="display: flex; box-sizing: border-box; width: 20px; height: 10px; border-top-left-radius: 20px; border-top-right-radius: 20px; background: RGBA(76, 175, 80, .5); color: rgb(255, 255, 255); font-size: 16px; letter-spacing: 0.544px; justify-content: flex-end; float: right; margin-top: -10px; box-sizing: border-box !important; overflow-wrap: break-word !important;"></span></h2>
+<p data-tool="mdnice编辑器" style="padding-top: 8px; padding-bottom: 8px; line-height: 26px; color: #2b2b2b; margin: 10px 0px; letter-spacing: 2px; font-size: 16px; word-spacing: 2px;">single-sap并不建议微应用之间大量共享数据，其认为如果两个应用中耦合数据过多，那么我们就需要考虑是否应该将它们拆分了，不过还是提供了共享的方式，具体可参考<a target="_blank" rel="noopener" href="https://zh-hans.single-spa.js.org/docs/faq/#%E5%A6%82%E4%BD%95%E5%9C%A8%E5%BA%94%E7%94%A8%E7%A8%8B%E5%BA%8F%E9%97%B4%E5%85%B1%E4%BA%AB%E7%8A%B6%E6%80%81%EF%BC%9F" style="text-decoration: none; word-wrap: break-word; color: #399003; font-weight: normal; border-bottom: 1px solid #399003;">这里</a>。</p>
+<p data-tool="mdnice编辑器" style="padding-top: 8px; padding-bottom: 8px; line-height: 26px; color: #2b2b2b; margin: 10px 0px; letter-spacing: 2px; font-size: 16px; word-spacing: 2px;">qiankun则是采用两种方式进行数据共享，对于主应用和微应用之间基于 props 以单向数据流的方式传递给子应用进行共享；对不同微应用间采用基于浏览器原生事件进行数据通信。</p>
+<p data-tool="mdnice编辑器" style="padding-top: 8px; padding-bottom: 8px; line-height: 26px; color: #2b2b2b; margin: 10px 0px; letter-spacing: 2px; font-size: 16px; word-spacing: 2px;">除此之外，我们还可以采用一些全局的存储方式进行数据共享，例如localStorage、sessionStorage等。</p>
+<h2 data-tool="mdnice编辑器" style="margin-top: 30px; margin-bottom: 15px; padding: 0px; font-weight: bold; color: black; font-size: 22px; display: block; border-bottom: 4px solid #4CAF50;"><span class="prefix" style="display: none;"></span><span class="content" style="display: flex; color: #4CAF50; font-size: 20px;">五、应用隔离</span><span class="suffix" style="display: flex; box-sizing: border-box; width: 20px; height: 10px; border-top-left-radius: 20px; border-top-right-radius: 20px; background: RGBA(76, 175, 80, .5); color: rgb(255, 255, 255); font-size: 16px; letter-spacing: 0.544px; justify-content: flex-end; float: right; margin-top: -10px; box-sizing: border-box !important; overflow-wrap: break-word !important;"></span></h2>
+<h3 data-tool="mdnice编辑器" style="padding: 0px; color: black; font-size: 17px; font-weight: bold; text-align: center; position: relative; margin-top: 20px; margin-bottom: 20px;"><span class="prefix" style="display: none;"></span><span class="content" style="color: #2b2b2b; padding-bottom: 2px;"><span style="width: 30px; height: 30px; display: block; background-image: url(https://my-wechat.mdnice.com/grass-green.png); background-position: center; background-size: 30px; margin: auto; opacity: 1; background-repeat: no-repeat; margin-bottom: -8px;"></span>1、JS隔离</span><span class="suffix" style="display: none;"></span></h3>
+<p data-tool="mdnice编辑器" style="padding-top: 8px; padding-bottom: 8px; line-height: 26px; color: #2b2b2b; margin: 10px 0px; letter-spacing: 2px; font-size: 16px; word-spacing: 2px;">qiankun采用了沙箱的方式进行隔离，对于沙箱的具体实现可以去搜罗一下文章，也是一个很有意思的东西，主要说一下qiankun的沙箱，qiankun主要有两种沙箱，一种是对于不支持proxy的快照沙箱snapshotSandbox，一种是基于proxy的代理沙箱proxySandbox。</p>
+<p data-tool="mdnice编辑器" style="padding-top: 8px; padding-bottom: 8px; line-height: 26px; color: #2b2b2b; margin: 10px 0px; letter-spacing: 2px; font-size: 16px; word-spacing: 2px;">快照沙箱，整体思路是先将window对象copy给一个新的对象保存下来，然后该应用的所有操作都基于该新对象，所有的修改在新对象中进行，然后在实例销毁前与window进行对比，将更改的部分保留下来，然后在下次进入该实例是，将更改的部分通过保留的数据进行还原，以达到退出前的样子。</p>
+<p data-tool="mdnice编辑器" style="padding-top: 8px; padding-bottom: 8px; line-height: 26px; color: #2b2b2b; margin: 10px 0px; letter-spacing: 2px; font-size: 16px; word-spacing: 2px;">代理沙箱，主要是采用ES6的proxy特性，通过proxy我们可以获取到对象上所有的改变，主体思想不变，都是通过代理全局对象，监控所有修改，然后将所有改变缓存起来，等该实例在此进入的时候根据数据进行还原。不过通过proxy实现可以支持多实例同时运行。</p>
+<h3 data-tool="mdnice编辑器" style="padding: 0px; color: black; font-size: 17px; font-weight: bold; text-align: center; position: relative; margin-top: 20px; margin-bottom: 20px;"><span class="prefix" style="display: none;"></span><span class="content" style="color: #2b2b2b; padding-bottom: 2px;"><span style="width: 30px; height: 30px; display: block; background-image: url(https://my-wechat.mdnice.com/grass-green.png); background-position: center; background-size: 30px; margin: auto; opacity: 1; background-repeat: no-repeat; margin-bottom: -8px;"></span>2、CSS隔离</span><span class="suffix" style="display: none;"></span></h3>
+<p data-tool="mdnice编辑器" style="padding-top: 8px; padding-bottom: 8px; line-height: 26px; color: #2b2b2b; margin: 10px 0px; letter-spacing: 2px; font-size: 16px; word-spacing: 2px;">做到css隔离的实现方式有很多，比如最简单直接的办法通过约定css前缀的方式来避免样式冲突，每个微应用都拥有特定的前缀，该方案适用于新项目中，对于历史遗留项目，整体适配起来还是比较困难的。</p>
+<p data-tool="mdnice编辑器" style="padding-top: 8px; padding-bottom: 8px; line-height: 26px; color: #2b2b2b; margin: 10px 0px; letter-spacing: 2px; font-size: 16px; word-spacing: 2px;">qiankun通过fetch html方式引入微应用资源，此种方式可以天然的解决样式冲突问题，它会将微应用的所有资源进行解析分类，然后在进行引入，在微应用销毁时又会整体移除css tree，可以做到相互不影响，有兴趣的大家可以看一下 <a target="_blank" rel="noopener" href="https://github.com/kuitos/import-html-entry" style="text-decoration: none; word-wrap: break-word; color: #399003; font-weight: normal; border-bottom: 1px solid #399003;">import-html-entry</a>库，代码不多，很精简。</p>
+<h2 data-tool="mdnice编辑器" style="margin-top: 30px; margin-bottom: 15px; padding: 0px; font-weight: bold; color: black; font-size: 22px; display: block; border-bottom: 4px solid #4CAF50;"><span class="prefix" style="display: none;"></span><span class="content" style="display: flex; color: #4CAF50; font-size: 20px;">六、总结</span><span class="suffix" style="display: flex; box-sizing: border-box; width: 20px; height: 10px; border-top-left-radius: 20px; border-top-right-radius: 20px; background: RGBA(76, 175, 80, .5); color: rgb(255, 255, 255); font-size: 16px; letter-spacing: 0.544px; justify-content: flex-end; float: right; margin-top: -10px; box-sizing: border-box !important; overflow-wrap: break-word !important;"></span></h2>
+<p data-tool="mdnice编辑器" style="padding-top: 8px; padding-bottom: 8px; line-height: 26px; color: #2b2b2b; margin: 10px 0px; letter-spacing: 2px; font-size: 16px; word-spacing: 2px;">根据以上可以发现，微前端其实主要做了两件事情，一是处理加载微应用；二是通过生命周期管理各个微应用。重点在于主应用提供的各种配置、入口，然后具体由微前端框架进行操作，在特定的时间节点执行微应用的生命周期函数。</p>
+<h2 data-tool="mdnice编辑器" style="margin-top: 30px; margin-bottom: 15px; padding: 0px; font-weight: bold; color: black; font-size: 22px; display: block; border-bottom: 4px solid #4CAF50;"><span class="prefix" style="display: none;"></span><span class="content" style="display: flex; color: #4CAF50; font-size: 20px;">相关链接</span><span class="suffix" style="display: flex; box-sizing: border-box; width: 20px; height: 10px; border-top-left-radius: 20px; border-top-right-radius: 20px; background: RGBA(76, 175, 80, .5); color: rgb(255, 255, 255); font-size: 16px; letter-spacing: 0.544px; justify-content: flex-end; float: right; margin-top: -10px; box-sizing: border-box !important; overflow-wrap: break-word !important;"></span></h2>
+<ul data-tool="mdnice编辑器" style="margin-top: 8px; margin-bottom: 8px; padding-left: 25px; font-size: 15px; color: #595959; list-style-type: circle;">
+<li><section style="margin-top: 5px; margin-bottom: 5px; line-height: 26px; text-align: left; font-size: 16px; font-weight: normal; color: #595959;"><a target="_blank" rel="noopener" href="https://github.com/single-spa/single-spa" style="text-decoration: none; word-wrap: break-word; color: #399003; font-weight: normal; border-bottom: 1px solid #399003;">single-spa</a></section></li><li><section style="margin-top: 5px; margin-bottom: 5px; line-height: 26px; text-align: left; font-size: 16px; font-weight: normal; color: #595959;"><a target="_blank" rel="noopener" href="https://qiankun.umijs.org/" style="text-decoration: none; word-wrap: break-word; color: #399003; font-weight: normal; border-bottom: 1px solid #399003;">qiankun</a></section></li><li><section style="margin-top: 5px; margin-bottom: 5px; line-height: 26px; text-align: left; font-size: 16px; font-weight: normal; color: #595959;"><a target="_blank" rel="noopener" href="https://zhuanlan.zhihu.com/p/78362028" style="text-decoration: none; word-wrap: break-word; color: #399003; font-weight: normal; border-bottom: 1px solid #399003;">可能是你见过最完善的微前端解决方案 - 知乎</a></section></li><li><section style="margin-top: 5px; margin-bottom: 5px; line-height: 26px; text-align: left; font-size: 16px; font-weight: normal; color: #595959;"><a target="_blank" rel="noopener" href="https://juejin.im/post/6862661545592111111#heading-72" style="text-decoration: none; word-wrap: break-word; color: #399003; font-weight: normal; border-bottom: 1px solid #399003;">微前端框架 之 single-spa 从入门到精通</a></section></li><li><section style="margin-top: 5px; margin-bottom: 5px; line-height: 26px; text-align: left; font-size: 16px; font-weight: normal; color: #595959;"><a target="_blank" rel="noopener" href="https://developer.aliyun.com/article/761478?spm=a2c6h.14164896.0.0.54e52bcbaA0PUn" style="text-decoration: none; word-wrap: break-word; color: #399003; font-weight: normal; border-bottom: 1px solid #399003;">阿里云开放平台微前端方案的沙箱实现-阿里云开发者社区</a></section></li></ul>
+<blockquote class="multiquote-1" data-tool="mdnice编辑器" style="display: block; font-size: 0.9em; overflow: auto; overflow-scrolling: touch; padding-top: 10px; padding-bottom: 10px; padding-left: 20px; padding-right: 10px; margin-bottom: 20px; margin-top: 20px; text-size-adjust: 100%; line-height: 1.55em; font-weight: 400; border-radius: 6px; color: #595959; font-style: normal; text-align: left; box-sizing: inherit; border-left: none; border: 1px solid #1b900d; background: #fff;"><span style="color: #74b56d; font-size: 34px; line-height: 1; font-weight: 700;">❝</span>
+<p style="padding-top: 8px; padding-bottom: 8px; letter-spacing: 2px; font-size: 16px; word-spacing: 2px; margin: 0px; color: black; line-height: 26px;">Time is fair, because it gives everyone 24 hours.</p>
+<span style="float: right; color: #74b56d;">❞</span></blockquote>
+
+        </div>
+
+        
+        <section class="post-tags">
+            <div>
+                <span>标签:</span>
+                <span class="tag">
+                    
+                    
+                        <a href="/tags/%E5%BE%AE%E5%89%8D%E7%AB%AF/"># 微前端</a>
+                    
+                        <a href="/tags/qiankun/"># qiankun</a>
+                    
+                        <a href="/tags/single-spa/"># single-spa</a>
+                    
+                        
+                </span>
+            </div>
+            <div>
+                <a href="javascript:window.history.back();">返回</a>
+                <span>· </span>
+                <a href="/">首页</a>
+            </div>
+        </section>
+        <section class="post-nav">
+            
+                <a class="prev" rel="prev" href="/2021/12/31/%E5%89%8D%E7%AB%AF%E7%AE%97%E6%B3%95-%E9%93%BE%E8%A1%A8%E3%80%81%E6%A0%88%E3%80%81%E9%98%9F%E5%88%97/">前端算法-链表、栈、队列</a>
+            
+            
+            <a class="next" rel="next" href="/2021/12/30/Sortablejs%E5%AE%9E%E7%8E%B0%E6%8B%96%E6%8B%BD%E9%87%87%E5%9D%91/">Sortablejs实现拖拽采坑</a>
+            
+        </section>
+
+
+    </article>
+</div>
+
+            </div>
+            <footer id="footer" class="footer">
+    <div class="copyright">
+        <span>© quguoliang</span>
+    </div>
+</footer>
+
+    </div>
+    
+<script src="/js/search.js"></script>
+
+</body>
+
+</html>

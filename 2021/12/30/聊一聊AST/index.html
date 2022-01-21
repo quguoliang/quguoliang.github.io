@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+<meta name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+<meta http-equiv="X-UA-Compatible" content="ie=edge">
+
+    <meta name="author" content="quguoliang">
+
+
+
+
+
+<script src="/js/jquery-2.0.3.min.js"></script>
+
+
+<script src="/js/jquery.justifiedGallery.min.js"></script>
+
+
+<link type="text/css" rel="stylesheet" href="//at.alicdn.com/t/font_3061293_3k2vjqu792g.css">
+<title>聊一聊AST | 有点意思</title>
+
+
+
+    <link rel="icon" href="/smile.svg">
+
+
+
+
+    <!-- stylesheets list from _config.yml -->
+    
+    <link rel="stylesheet" href="/css/style.css">
+    
+
+
+
+    <!-- scripts list from _config.yml -->
+    
+    <script src="/js/script.js"></script>
+    
+    <script src="/js/tocbot.min.js"></script>
+    
+
+
+
+    
+    
+        
+    
+
+
+<meta name="generator" content="Hexo 5.4.0"></head>
+
+<body>
+    <script>
+        // this function is used to check current theme before page loaded.
+        (() => {
+            const currentTheme = window.localStorage && window.localStorage.getItem('theme') || '';
+            const isDark = currentTheme === 'dark';
+            const pagebody = document.getElementsByTagName('body')[0]
+            if (isDark) {
+                pagebody.classList.add('dark-theme');
+                // mobile
+                document.getElementById("mobile-toggle-theme").innerText = "· Dark"
+            } else {
+                pagebody.classList.remove('dark-theme');
+                // mobile
+                document.getElementById("mobile-toggle-theme").innerText = "· Light"
+            }
+        })();
+    </script>
+
+    <div class="wrapper">
+        <header>
+    <nav class="navbar">
+        <div class="container">
+            <div class="navbar-header header-logo"><a href="/">有点意思</a></div>
+            <div class="menu navbar-right">
+                
+                    <a class="menu-item" href="/category">分类</a>
+                
+                    <a class="menu-item" href="/archives">时间轴</a>
+                
+                    <a class="menu-item" href="/tag">标签</a>
+                
+                    <a class="menu-item" href="/about">关于</a>
+                
+                  <a class="menu-item menu-item-search" title="搜索">
+                    搜索
+                  </a>
+             
+                <input id="switch_default" type="checkbox" class="switch_default">
+                <label for="switch_default" class="toggleBtn"></label>
+            </div>
+        </div>
+    </nav>
+
+    
+    <nav class="navbar-mobile" id="nav-mobile">
+        <div class="container">
+            <div class="navbar-header">
+                <div>
+                    <a href="/">有点意思</a><a id="mobile-toggle-theme">·&nbsp;Light</a>
+                </div>
+                <div class="menu-toggle" onclick="mobileBtn()">&#9776; Menu</div>
+            </div>
+            <div class="menu" id="mobile-menu">
+                
+                    <a class="menu-item" href="/category">分类</a>
+                
+                    <a class="menu-item" href="/archives">时间轴</a>
+                
+                    <a class="menu-item" href="/tag">标签</a>
+                
+                    <a class="menu-item" href="/about">关于</a>
+                
+            </div>
+        </div>
+    </nav>
+    <div class="search-form-wrap">
+        <div class="local-search local-search-plugin">
+  <input type="search" id="local-search-input" class="local-search-input" placeholder="Search...">
+  <div id="local-search-result" class="local-search-result"></div>
+</div>
+    </div>
+</header>
+<script>
+    var mobileBtn = function f() {
+        var toggleMenu = document.getElementsByClassName("menu-toggle")[0];
+        var mobileMenu = document.getElementById("mobile-menu");
+        if(toggleMenu.classList.contains("active")){
+           toggleMenu.classList.remove("active")
+            mobileMenu.classList.remove("active")
+        }else{
+            toggleMenu.classList.add("active")
+            mobileMenu.classList.add("active")
+        }
+    }
+</script>
+            <div class="main">
+                <div class="container">
+    
+    
+        <div class="post-toc">
+    <div class="tocbot-list">
+    </div>
+    <div class="tocbot-list-menu">
+        <a class="tocbot-toc-expand" onclick="expand_toc()">全部</a>
+        <a onclick="go_bottom()">底部</a>
+    </div>
+    <i id='go-top' class="iconfont icon-huidaodingbu" style="display: none;" onclick="go_top()"></i>
+</div>
+
+<script>
+    let timer = null;
+    let beforeScrollTop = 0
+    window.addEventListener('scroll',(e)=>{
+        const afterScrollTop = document.documentElement.scrollTop
+        if(afterScrollTop>beforeScrollTop && timer){
+            clearInterval(timer)
+        }
+        const topEle = document.getElementById('go-top')
+        if(afterScrollTop > 100){
+            topEle.style.display='block'
+        }else{
+            topEle.style.display='none'
+        }
+        beforeScrollTop=afterScrollTop
+    })
+
+    document.ready(
+        function () {
+            tocbot.init({
+                tocSelector: '.tocbot-list',
+                contentSelector: '.post-content',
+                headingSelector: 'h1, h2, h3, h4, h5',
+                collapseDepth: 1,
+                orderedList: false,
+                scrollSmooth: true,
+            })
+        }
+    )
+
+    function expand_toc() {
+        var b = document.querySelector(".tocbot-toc-expand");
+        tocbot.init({
+            tocSelector: '.tocbot-list',
+            contentSelector: '.post-content',
+            headingSelector: 'h1, h2, h3, h4, h5',
+            collapseDepth: 6,
+            orderedList: false,
+            scrollSmooth: true,
+        });
+        b.setAttribute("onclick", "collapse_toc()");
+        b.innerHTML = "收起"
+    }
+
+    function collapse_toc() {
+        var b = document.querySelector(".tocbot-toc-expand");
+        tocbot.init({
+            tocSelector: '.tocbot-list',
+            contentSelector: '.post-content',
+            headingSelector: 'h1, h2, h3, h4, h5',
+            collapseDepth: 1,
+            orderedList: false,
+            scrollSmooth: true,
+        });
+        b.setAttribute("onclick", "expand_toc()");
+        b.innerHTML = "全部"
+    }
+
+    function go_top() {
+        timer=setInterval(function(){
+            var scrollTop=document.documentElement.scrollTop||document.body.scrollTop;
+            var ispeed=Math.floor(-scrollTop/6);
+            if(scrollTop==0){
+               clearInterval(timer);
+            }
+            document.documentElement.scrollTop=document.body.scrollTop=scrollTop+ispeed;
+        },30)
+        // window.scrollTo(0, 0);
+    }
+
+    function go_bottom() {
+        window.scrollTo(0, document.body.scrollHeight);
+    }
+
+</script>
+    
+
+    
+    <article class="post-wrap">
+        <header class="post-header">
+            <h1 class="post-title">聊一聊AST</h1>
+            
+                <div class="post-meta">
+                    
+                        作者: <a itemprop="author" rel="author" href="/">quguoliang</a>
+                    
+
+                    
+                        <span class="post-time" style="margin:0 15px 0 15px;">
+                        日期: <a href="#">2021-12-30 , 星期四&nbsp;&nbsp;15:28:20</a>
+                        </span>
+                    
+                    
+                        <span class="post-category">
+                    分类:
+                            
+                                <a href="/categories/%E6%8A%80%E6%9C%AF%E6%96%87%E7%AB%A0/">技术文章</a>
+                            
+                        </span>
+                    
+                </div>
+            
+        </header>
+
+        <div class="post-content">
+            <p>前端技术发展日新月异，各种技术框架让人烟花缭乱，大多数时间我们只需要关注业务，如何使用是我们的主要任务，但是如果我们深入学习，就会发现永远绕不开一个专业名词抽象语法树（Abstract Syntax Tree），简称AST，那么我们今天就来盘一盘它。</p>
+<p><img src="https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/4fa71b59d1594e1b8910a6e3bd56cba3~tplv-k3u1fbpfcp-zoom-1.image"></p>
+<h2 id="一、AST何许东西也"><a href="#一、AST何许东西也" class="headerlink" title="一、AST何许东西也"></a>一、AST何许东西也</h2><blockquote>
+<p>在计算机科学中，抽象语法树，或简称<strong>语法树</strong>（Syntax tree），是源代码 语法结构的一种抽象表示。它以树状的形式表现编程语言的语法结构，树上的每个节点都表示源代码中的一种结构。  —-维基百科</p>
+</blockquote>
+<p>根据以上我们可以看到AST其实就是计算机语言语法结构的描述，那也就是说你所熟知的语言JavaScript、Java、python、Html甚至Css都需要到AST这里走一遭，所以足以看出AST的重要性。讲这么多只是让大家对AST的重要性有个足够的认识，那它具体是什么东西我们还需要来看一哈。</p>
+<p>AST其实是对我们来讲只是一个对象，它无关乎语法结构，不会记录源语言真实语法中的每个细节（比如省略分隔符），这也是名字中抽象一词的由来，与之相对应的其实还有另一种树，具<br>象语法树（Concret Syntax Tree），简称CST，它有代码直接翻译解析而来，因而保留了原语法的所有信息，也被称之为解析树。</p>
+<p>为什么要去解析源代码成一个通用对象呢？各种语言语法种类繁多，但是计算机是无法识别我们写的代码的，所以就需要一种通用的数据结构来描述，那AST其实就是那个东西。同时，因为AST是真实存在且存在一定逻辑的，那我们也就可以在AST上做点文章，搞点花活：）</p>
+<h2 id="二、AST如何产生"><a href="#二、AST如何产生" class="headerlink" title="二、AST如何产生"></a>二、AST如何产生</h2><p>我们来了解一下Javascript解析流程，先整个图see see：</p>
+<p><img src="https://p1-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/07599d6153cd440cb0a4b55b3937e15b~tplv-k3u1fbpfcp-watermark.image" alt="0686CD87-5BCA-4C32-855D-08200500EA7E.png"></p>
+<p>首先 ’张三’ 在运用毕生所学在vscode中写了以下代码</p>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">const</span> name = <span class="string">&#x27;张三&#x27;</span>;</span><br><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">getTitle</span>(<span class="params"></span>)</span>&#123;</span><br><span class="line">  <span class="keyword">return</span> <span class="string">&#x27;法外狂徒&#x27;</span> ;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+<p>这时候为了弄明白张三表达的是什么思想，就需要通过解析器（parse）对这行代码进行解析。parse分两步进行。</p>
+<p><strong>词法分析</strong>：词法解析是一个将字符流(char stream)转换成记号流(token stream)的过程，会将code中每个词都拆分开来，比如const name = ‘张三’  就会被拆分成const、name、=、’张三‘，大家可以通过这个网站<a target="_blank" rel="noopener" href="https://esprima.org/demo/parse.html#">Esprima: Parser</a>具体看一下。</p>
+<p><strong>语法分析</strong>：通过词法分析我们拿到了token流，接下来我们就可以通过对token进行语法分析生成AST，比如const是一个声明参数，就会被标记为Declaration，以此类推，逐步转换成一棵AST。AST可以通过<a target="_blank" rel="noopener" href="https://astexplorer.net/">AST explorer</a>这个网站在线查看。</p>
+<p><img src="https://p9-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/5b54e506c605497c8fe659f4932c4ac8~tplv-k3u1fbpfcp-watermark.image" alt="7CE80182-C358-49AA-86ED-FEB0579A8225.png"></p>
+<p>这里提到了解析器parse的概念，解析器就是用来解析源码到AST的工具，许多的解析器比如babel parser、eslint parser、typescript parser等，他们都基于estree标准，只不过是另外做了扩展，随后acorn出现，解析速度更快，同时支持插件扩展，所以各家就开始基于acorn进行重构。所以现在babel、eslint都可以通过编写插件进行自定义扩展。</p>
+<h2 id="三、AST结构"><a href="#三、AST结构" class="headerlink" title="三、AST结构"></a>三、AST结构</h2><p>知道了AST的解析过程，我们来具体看一下AST的结构，以 babel解析为例：</p>
+<p><img src="https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/e59535a15f6f43529be11aec2bcbaca1~tplv-k3u1fbpfcp-watermark.image" alt="04C0F7A6-3456-4BDE-BCED-513A492FC329.png"></p>
+<p>这是一个const name = ‘张三’ 的AST结构，从上面可以看到整个对象包裹在Program中，Program表示整个程序的节点，它有一个body参数用来存放程序子内容主要看一下body中的内容</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">VariableDeclaration: 声明语句类型，还有FunctionDeclaration、ExpressionStatement等等。</span><br><span class="line">start、end：表示当前内容在整个文档流中存在的位置。</span><br><span class="line">loc：展示当前内容所在行号和列号</span><br><span class="line">range：表示位置，同上</span><br><span class="line">leadingComments：注释列表，注释信息会展示在这里</span><br><span class="line">declarations：声明语句特有的展示声明信息的参数，</span><br><span class="line">kind：声明类型</span><br><span class="line">......</span><br></pre></td></tr></table></figure>
+
+<p>AST既然是对源码的抽象，那么源码中包含标识符、字面量、表达式、语句等，对应AST就都会有相应的映射，比如标识符—&gt;Identifier、字面量—&gt;Literal等等，具体的可以通过上面的网站去看看。</p>
+<h2 id="四、AST有何用"><a href="#四、AST有何用" class="headerlink" title="四、AST有何用"></a>四、AST有何用</h2><p>要问AST有何用？你一定天天都在用，比如Eslint，比如Babel，再比如Typescript，Eslint中集成了大量的插件用于规范化代码，这些插件就是通过对AST进行修改实现的各种功能。OK，那如何修改AST呢。拿捏。</p>
+<p>来人，放图</p>
+<p><img src="https://p1-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/81492fe1e7964d149ab06c4dab74bb8d~tplv-k3u1fbpfcp-watermark.image" alt="44ABEDF4-7E73-4445-B34F-0EE1C44530E3.png"></p>
+<p>没错，还是这张图，只不过我们现在来关注中间的部分，transform很亮眼，这就是我们修改AST的地方，也是各种Eslint、babel插件搞活的地方。既然源码能够解析成AST，那么AST同样也就能生成源码，所以我们在AST上按着规范进行修改，那么一定就能拿到预期的效果，至于如何修改本次就不做具体阐述了，如果有兴趣后面我可以写写Eslint和Babel插件的编写。</p>
+<h2 id="五、总结一下"><a href="#五、总结一下" class="headerlink" title="五、总结一下"></a>五、总结一下</h2><p>AST非常重要，是我们走向原理的必经之路，不是很难，但是各种定义比较多，多看多查就能了解，了解以及学会使用AST后，就会发现很多正在使用的工具原理就显而易见了，甚至我们也可以自己编写插件，甚至解析器，祝大家学的愉快~</p>
+<p>等一下，我还有最后一句话</p>
+<blockquote>
+<p>Time is fair, because it gives everyone 24 hours.</p>
+</blockquote>
+
+        </div>
+
+        
+        <section class="post-tags">
+            <div>
+                <span>标签:</span>
+                <span class="tag">
+                    
+                    
+                        <a href="/tags/Javascript/"># Javascript</a>
+                    
+                        <a href="/tags/AST/"># AST</a>
+                    
+                        <a href="/tags/%E5%89%8D%E7%AB%AF/"># 前端</a>
+                    
+                        <a href="/tags/%E5%9F%BA%E7%A1%80/"># 基础</a>
+                    
+                        
+                </span>
+            </div>
+            <div>
+                <a href="javascript:window.history.back();">返回</a>
+                <span>· </span>
+                <a href="/">首页</a>
+            </div>
+        </section>
+        <section class="post-nav">
+            
+                <a class="prev" rel="prev" href="/2021/12/30/Sortablejs%E5%AE%9E%E7%8E%B0%E6%8B%96%E6%8B%BD%E9%87%87%E5%9D%91/">Sortablejs实现拖拽采坑</a>
+            
+            
+        </section>
+
+
+    </article>
+</div>
+
+            </div>
+            <footer id="footer" class="footer">
+    <div class="copyright">
+        <span>© quguoliang</span>
+    </div>
+</footer>
+
+    </div>
+    
+<script src="/js/search.js"></script>
+
+</body>
+
+</html>
