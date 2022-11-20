@@ -1,0 +1,896 @@
+<?xml version="1.0" encoding="utf-8"?>
+<search>
+  <entry>
+    <title>Sortablejs实现拖拽采坑</title>
+    <url>/2021/12/30/Sortablejs%E5%AE%9E%E7%8E%B0%E6%8B%96%E6%8B%BD%E9%87%87%E5%9D%91/</url>
+    <content><![CDATA[<p>最近项目需要实现一个表单拖拽更换位置的功能，第一时间想到了sortablejs这个库，因为在以前的开发过程中简单的使用过一次，感觉不错，重点是不侵入组件，所以本次还是准备用它，不过开发过程中却是遇到了很多问题。</p>
+<p>关于该库如何使用这里就不过多赘述了，可以直接看中文文档，已经介绍的很清楚了<a href="http://www.sortablejs.com/options.html">Sortable.js中文网|配置</a></p>
+<h3 id="一、是否可以在长列表进行滚动拖拽？"><a href="#一、是否可以在长列表进行滚动拖拽？" class="headerlink" title="一、是否可以在长列表进行滚动拖拽？"></a>一、是否可以在长列表进行滚动拖拽？</h3><p>该问题是因为本次列表选用的是一个长列表，虽然数据量不会特别大，但是也会超出一屏，所以一定会涉及到滚动。通过查看API发现是可以支持滚动的，通过配置项中设置scroll:el（table元素） 即可实现在表单中滚动。</p>
+<figure class="highlight ts"><table><tr><td class="code"><pre><span class="line"><span class="keyword">new</span> Sortable(tbody <span class="keyword">as</span> <span class="built_in">any</span>, &#123;</span><br><span class="line">        <span class="attr">scroll</span>: table <span class="keyword">as</span> <span class="built_in">any</span>,</span><br><span class="line">        <span class="attr">bubbleScroll</span>: <span class="literal">true</span>,</span><br><span class="line">      &#125;);</span><br></pre></td></tr></table></figure>
+
+<p>不过该情况也只是能进行滚动而已，必要条件是拖着元素到表格的头部和尾部才能进行滚动，其他地方无法进行。</p>
+<h3 id="二、onEnd方法无法实时获取表单值？"><a href="#二、onEnd方法无法实时获取表单值？" class="headerlink" title="二、onEnd方法无法实时获取表单值？"></a>二、onEnd方法无法实时获取表单值？</h3><p>onEnd方法是拖拽后的回调方法，通常需要在这里面处理一些请求，包括把排序后的值传递给后端、更新数据等，但是操作后发现onEnd方法是无法实时获取表格数据的，拿到的只是创建时的瞬时值，解决办法就是将Sortable对象存储起来，每次更新的时候进行销毁 Sortable.destroy（）</p>
+<figure class="highlight ts"><table><tr><td class="code"><pre><span class="line"><span class="keyword">const</span> sortable = useRef&lt;Sortable&gt;()</span><br><span class="line"><span class="keyword">const</span> [dataSource,setDataSource] = useState&lt;<span class="built_in">any</span>[]&gt;([])</span><br><span class="line"></span><br><span class="line"><span class="keyword">const</span> onRowDrop = useCallback(<span class="function">()=&gt;</span>&#123;</span><br><span class="line">	<span class="keyword">if</span>(sortable.current)&#123;</span><br><span class="line">		sortable.current.destroy()</span><br><span class="line">	&#125;</span><br><span class="line">	 sortable.current = <span class="keyword">new</span> Sortable(tbody <span class="keyword">as</span> <span class="built_in">any</span>, &#123;</span><br><span class="line">        <span class="attr">scroll</span>: table <span class="keyword">as</span> <span class="built_in">any</span>,</span><br><span class="line">        <span class="attr">bubbleScroll</span>: <span class="literal">true</span>,</span><br><span class="line">        <span class="attr">animation</span>: <span class="number">200</span>,</span><br><span class="line">        <span class="attr">ghostClass</span>: <span class="string">&#x27;blue-background-class&#x27;</span>,</span><br><span class="line">        <span class="attr">touchStartThreshold</span>: <span class="number">3</span>,</span><br><span class="line">        <span class="attr">onEnd</span>: <span class="function">(<span class="params">&#123; newIndex, oldIndex &#125;: <span class="built_in">any</span></span>) =&gt;</span> &#123;</span><br><span class="line">			<span class="keyword">const</span> list = [...dataSource]  </span><br><span class="line"> 			<span class="keyword">const</span> curRow = list.splice(oldIndex, <span class="number">1</span>)[<span class="number">0</span>];</span><br><span class="line">          list.splice(newIndex, <span class="number">0</span>, curRow);</span><br><span class="line">			<span class="comment">//doSomething </span></span><br><span class="line">        &#125;);</span><br><span class="line">       &#125;</span><br><span class="line">      &#125;);</span><br><span class="line">&#125;,[dataSource])</span><br></pre></td></tr></table></figure>
+
+<h3 id="三、拖拽后出现回跳问题"><a href="#三、拖拽后出现回跳问题" class="headerlink" title="三、拖拽后出现回跳问题"></a>三、拖拽后出现回跳问题</h3><p>这个问题很坑，因为所有的操作都是正确，返回值也是正确的，包括onEnd里面执行的操作也都成功了，数据源也更改了，但是就是拖拽完成后会回跳，刷新页面后排序也是拖拽后的顺序，就很蛋疼，找了很久才发现。</p>
+<p>先整理一下现象：<br>1、拖拽数据正常<br>2、拖拽结束后会回到原处</p>
+<p>问题的根源是DOM节点和Virtual DOM不一致导致的，Sortabled不会侵入你的组件，它会直接对真实的DOM进行修改，所以当我们直接拖拽后真实DOM发生改变，但是页面更新后触发patch，会发现当前值和原值并未发生改变，所以会变回原来状态，导致发生回跳现象。</p>
+<p>解决办法：给table每行都加key</p>
+<figure class="highlight ts"><table><tr><td class="code"><pre><span class="line">&lt;Table rowKey=<span class="string">&#x27;id&#x27;</span> &#123;...props&#125;&gt;</span><br></pre></td></tr></table></figure>
+
+]]></content>
+      <categories>
+        <category>技术文章</category>
+      </categories>
+      <tags>
+        <tag>react</tag>
+        <tag>sorttablejs</tag>
+        <tag>antDesign</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>一个小题引发的惨案</title>
+    <url>/2022/01/11/%E4%B8%80%E4%B8%AA%E5%B0%8F%E9%A2%98%E5%BC%95%E5%8F%91%E7%9A%84%E6%83%A8%E6%A1%88/</url>
+    <content><![CDATA[<p>今天逛社区的时候发现了一个题，看了一下感觉还挺有意思的，题目如下：</p>
+<figure class="highlight js"><table><tr><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Bar</span> </span>&#123;</span><br><span class="line">  <span class="function"><span class="title">constructor</span>(<span class="params"></span>)</span> &#123;</span><br><span class="line">    <span class="built_in">this</span>[<span class="built_in">Symbol</span>.toPrimitive] = <span class="function"><span class="keyword">function</span> (<span class="params">hint</span>) </span>&#123;</span><br><span class="line">      <span class="keyword">switch</span> (hint) &#123;</span><br><span class="line">        <span class="keyword">case</span> <span class="string">&#x27;number&#x27;</span>:</span><br><span class="line">          <span class="keyword">return</span> <span class="number">3</span></span><br><span class="line">        <span class="keyword">case</span> <span class="string">&#x27;string&#x27;</span>:</span><br><span class="line">          <span class="keyword">return</span> <span class="string">&#x27;string bar&#x27;</span></span><br><span class="line">        <span class="keyword">case</span> <span class="string">&#x27;default&#x27;</span>:</span><br><span class="line">        <span class="keyword">default</span>:</span><br><span class="line">          <span class="keyword">return</span> <span class="string">&#x27;default bar&#x27;</span></span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"><span class="keyword">let</span> bar = <span class="keyword">new</span> Bar()</span><br><span class="line"><span class="built_in">console</span>.log(<span class="number">3</span> + bar);</span><br><span class="line"><span class="built_in">console</span>.log(<span class="number">3</span> - bar);</span><br><span class="line"><span class="built_in">console</span>.log(<span class="built_in">String</span>(bar));</span><br></pre></td></tr></table></figure>
+<p>这题看着好像没什么，就是单纯的问打印结果，但是显然并不是这么简单，一般为打印结果的会有很多套头在里面，就比如网上流传的某公司必考的Promise、async执行顺序打印问题，哈哈哈，扯远了。好了我们直接先看一下这个题的答案是什么。</p>
+<figure class="highlight js"><table><tr><td class="code"><pre><span class="line"><span class="built_in">console</span>.log(<span class="number">3</span> + bar); <span class="comment">// 3default bar</span></span><br><span class="line"><span class="built_in">console</span>.log(<span class="number">3</span> - bar); <span class="comment">// 0</span></span><br><span class="line"><span class="built_in">console</span>.log(<span class="built_in">String</span>(bar)); <span class="comment">//string bar</span></span><br></pre></td></tr></table></figure>
+<p>有点奇怪，为啥会是这个结果？其实出现这个结果的原因有两个：隐式转换 + Symbol.toPrimitive特性。我们来分开谈谈；</p>
+<h3 id="隐式转换"><a href="#隐式转换" class="headerlink" title="隐式转换"></a>隐式转换</h3><p>首先是隐式转换，这个算是老生常谈的问题了，很多面试官也喜欢问这个问题。我们先把这个题目修改一下：</p>
+<figure class="highlight js"><table><tr><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Bar</span> </span>&#123;</span><br><span class="line">&#125;</span><br><span class="line"><span class="keyword">let</span> bar = <span class="keyword">new</span> Bar()</span><br><span class="line"><span class="built_in">console</span>.log(<span class="number">3</span> + bar); <span class="comment">//3[object Object]</span></span><br><span class="line"><span class="built_in">console</span>.log(<span class="number">3</span> - bar); <span class="comment">// NaN</span></span><br><span class="line"><span class="built_in">console</span>.log(<span class="built_in">String</span>(bar)); <span class="comment">//[object Object]</span></span><br></pre></td></tr></table></figure>
+<p>输出结果已经直接给了，我们一个一个看，先看第一个<em><strong>3+bar</strong></em>，js隐式转换中‘+’号有两个意义，一个是字符串连接符，一个数字运算符。这里面bar是一个对象，属于复杂数据类型，且运算符左侧为number类型，所以这个表达式会将number类型和复杂类型统一转换成string类型然后进行相加。我们主要看bar的准换，JavaScript在对<strong>复杂类型</strong>的隐式转换中会先调用<strong>valueOf()</strong> 方法，随后调用<strong>toString()</strong> 方法，所以最后结果是bar转换成’[object,Object]’，得出结果：3[object Object]。</p>
+<p><img src="https://p9-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/90ae9a8f7d104ced92da6049c51e26c1~tplv-k3u1fbpfcp-watermark.image" alt="image.png"></p>
+<p><strong>’3 - bar‘</strong> 中同理，不过这里面’-‘代表运算符，JavaScript在遇到减、乘、除的时候会先将非number类型转换为number类型。所以bar转换到string类型是没有办法比较的<br>，必需再走一步，将stirng==&gt;number，调用<strong>Number()</strong> 方法，得到NaN。NaN和任何数运算后都会得到NaN。</p>
+<p><img src="https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/7fb806e4f33649b2b1b91a04af868ce1~tplv-k3u1fbpfcp-watermark.image" alt="image.png"></p>
+<p>最后一个不用说了，<strong>String()</strong> 其作用是将对象的值转换为字符串，不过该方法的返回与单个对象的 toString() 返回值相同。</p>
+<p>OK，看完了几个结果，我们能大概理出来这三个打印中，bar分别代表什么类型，依次是string、number、string。</p>
+<h3 id="Symbol-toPrimitive"><a href="#Symbol-toPrimitive" class="headerlink" title="Symbol.toPrimitive"></a>Symbol.toPrimitive</h3><p>接下来看看Symbol.toPrimitive，<code>Symbol.toPrimitive</code> 是一个内置的 Symbol 值，它是作为对象的函数值属性存在的，当一个对象转换为对应的原始值时，会调用此函数。它的属性如下：</p>
+<blockquote>
+<p>在 <code>Symbol.toPrimitive</code> 属性(用作函数值)的帮助下，一个对象可被转换为原始值。该函数被调用时，会被传递一个字符串参数 <code>hint</code> ，表示要转换到的原始值的预期类型。 <code>hint</code> 参数的取值是 <code>&quot;number&quot;</code>、<code>&quot;string&quot;</code> 和 <code>&quot;default&quot;</code> 中的任意一个。</p>
+</blockquote>
+<p>其具体属性我就不多说了，<a href="https://developer.mozilla.org/zh-CN/docs/Web/JavaScript/Reference/Global_Objects/Symbol/toPrimitive">这里</a>可以看.</p>
+<p><strong>console.log(3 + bar)：</strong> 这里经过上面的操作，我们知道bar会被转换成string类型，但是为什么经过Symbol.toPrimitive判断时候hint会是default呢？其实这里是因为’+‘号的原因，前面我们说过，’+‘号有两个意思，一个是<strong>运算操作符</strong> ，一个是<strong>字符串连接符</strong> Symbol.toPrimitive并不确定当前对象会转换成什么类型，所以会返回默认的default进行转换。</p>
+<p>而另外两个就很好说了，都会有明确的转换类型，所以<strong>console.log(3 - bar)</strong> 中的bar会被转换成3，结果也变成了0；<strong>console.log(String(bar))</strong> 中的bar转换成’string bar’，结果也变成了’string bar’。</p>
+<h3 id="总结一下"><a href="#总结一下" class="headerlink" title="总结一下"></a>总结一下</h3><p>主要记几个隐式转换的规则吧。</p>
+<p>1、一个主要小规则，一般情况下，逻辑判断最终需要转换成number类型进行判断，所以对象先转换成字符串，字符串在转换成number，Boolean直接转换成number，0-false、1-true。</p>
+<p><img src="https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/1dcb0104691e440499a1175f5ee08c37~tplv-k3u1fbpfcp-watermark.image" alt="image.png"></p>
+<p>2、‘+’号是比较特殊的，因为其可表运算和连接，所以可以根据以下判断</p>
+<ul>
+<li>  当一侧为<code>String</code>类型，被识别为字符串拼接，并会优先将另一侧转换为字符串类型。</li>
+<li>  当一侧为<code>Number</code>类型，另一侧为原始类型，则将原始类型转换为<code>Number</code>类型。</li>
+<li>  当一侧为<code>Number</code>类型，另一侧为引用类型，将引用类型和<code>Number</code>类型转换成字符串后拼接。</li>
+</ul>
+<p>剩下的一些特殊类型个例就不多记录了。</p>
+]]></content>
+      <categories>
+        <category>技术文章</category>
+      </categories>
+      <tags>
+        <tag>es6</tag>
+        <tag>Symbol</tag>
+        <tag>Javascript</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>减肥日记1</title>
+    <url>/2022/01/04/%E5%87%8F%E8%82%A5%E6%97%A5%E8%AE%B01/</url>
+    <content><![CDATA[<p>今天是2022年1月4日，星期二，元旦假期后的第一天，距离过年还有27天，我又打算开始新一轮的减肥了，虽然前面成功过一次，从103kg减肥到90kg，但是这一年谈恋爱后就有点放肆了，体重成功回弹，前一段时间说减肥一直都下不下心来，一到周末就开始放肆，本次确实要认真的减肥了，其实减肥也不算很难，最最重要的就是管住嘴，所以本次减肥先以一个月为期限，主要计划如下：</p>
+<h3 id="第一周"><a href="#第一周" class="headerlink" title="第一周"></a>第一周</h3><blockquote>
+<p>第一周正常吃饭，晚上七点以后不吃东西<br> <strong>早餐：</strong><br> 五谷磨房的冲剂；<br> <strong>午餐：</strong><br> 公司正常吃饭；<br> <strong>晚餐：</strong><br> 吃减脂外卖；<br> <strong>周末：</strong><br> 可酌情配餐，禁止大鱼大肉、零食等。</p>
+</blockquote>
+<p>运动方面：本周保证至少运动3次，运动形式不限，不过一般也就是健身房椭圆机或者力量训练，这次先不打算开启跑步。</p>
+<p>另外，除了吃饭以外，规律作息特别重要，本周主要在于调节作息，最近总是在1点开始睡觉，导致胃火严重，还特意去做了一个胃镜，难受到死，所以本周一定要规律作息，11：30准时关灯睡觉，早上7：30起床。</p>
+<h3 id="第二周"><a href="#第二周" class="headerlink" title="第二周"></a>第二周</h3><blockquote>
+<p>过午不食<br> <strong>早餐：</strong><br> 五谷磨房的冲剂；<br> <strong>午餐：</strong><br> 公司正常吃饭；<br> <strong>晚餐：</strong><br> 不吃，下午四点吃一个水果，多喝水。<br> <strong>周末：</strong><br> 可酌情配餐，禁止大鱼大肉、零食等。</p>
+</blockquote>
+<p> 运动方面：本周至少保证运动4次，运动形式不限。</p>
+<h3 id="第三周"><a href="#第三周" class="headerlink" title="第三周"></a>第三周</h3><blockquote>
+<p>晚餐隔天吃<br> <strong>早餐：</strong><br> 五谷磨房的冲剂；<br> <strong>午餐：</strong><br> 公司正常吃饭；<br> <strong>晚餐：</strong><br> 隔天吃，一天吃一天不吃，下午四点吃一个水果，多喝水。<br> <strong>周末：</strong><br> 可酌情配餐，禁止大鱼大肉、零食等。</p>
+</blockquote>
+<p> 运动方面：本周至少保证运动4次，运动形式不限。</p>
+<h3 id="第四周"><a href="#第四周" class="headerlink" title="第四周"></a>第四周</h3><blockquote>
+<p>看情况具体执行，最低限度是晚餐隔天吃，如果效果不好，或者可以接受，可以执行第二周的计划<br> <strong>早餐：</strong><br> 五谷磨房的冲剂；<br> <strong>午餐：</strong><br> 公司正常吃饭；<br> <strong>晚餐：</strong><br> 隔天吃，一天吃一天不吃，下午四点吃一个水果，多喝水。<br> <strong>周末：</strong><br> 可酌情配餐，禁止大鱼大肉、零食等。</p>
+</blockquote>
+<p> 运动方面：本周至少保证运动4次，运动形式不限。</p>
+<p>减肥还是主要靠毅力了，根据以前的经验，只要熬过第一周，后面就会逐渐成为习惯，也就慢慢的接受了，所以还是要努力啊！！！本来说年底要瘦到80kg的，哎，难受，不过还是得加油，争取在4月减肥到80kg。后面我会不定期记录的，祝我成功！</p>
+]]></content>
+      <categories>
+        <category>减肥日记</category>
+      </categories>
+      <tags>
+        <tag>减肥</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>减肥日记2</title>
+    <url>/2022/01/05/%E5%87%8F%E8%82%A5%E6%97%A5%E8%AE%B02/</url>
+    <content><![CDATA[<p>今天是2022年1月5日，星期三，减肥的第二天，昨天算是成功的，不过晚上回家熬点粥的时候没忍住，吃了一个鸡蛋….，又磕了一把瓜子……，emmmmmmm，问题不大，昨晚上本来要出去聚餐，所以就把定的减脂餐取消了，但是最后没去，所以冲了一袋藕粉喝了，大概100多大卡，加上吃的鸡蛋和瓜子也就200大卡，所以问题不大。</p>
+<p>昨天是去了健身房的，虽然计划是一周三到四次，但是一般工作日没有特殊事情，我都准备去，周末可能至少会去一次。</p>
+<p>睡觉方面，emmmmm，不太好，昨天跟女朋友一起刷视频，有点忘乎所以，到了11:50，不过也还行，算是进步了，刷完了我就直接睡了，预计也在12点左右就睡着了，算是最近睡的最早的一次，后面争取11：30睡觉，不过昨天本来预计今天7点起床的，起来收拾收拾屋子，洗洗衣服啥的，但是是在太困了，就是睡不醒，一直睡到9点才起来，可能是刚开始执行，有点补觉的嫌疑。</p>
+<p><strong>早餐</strong><br>今天早餐吃的是大米南瓜粥，熬多了….大概喝了一碗半加上一个卤蛋、一点咸菜，估计有个300-400大卡，上午还吃了一个猕猴桃。</p>
+<p><strong>午餐</strong><br>中午吃了几块猪蹄和一个小鸭腿，还可以，整体不算多，中午回去吃了一点瓜子，家里瓜子还剩了一点，看见就向吃，不过还能控制，每次就吃了一点。应该还好</p>
+<p><strong>晚餐</strong><br>晚上本来要去运动的，但是开会耽误了一会，就没去，吃了减脂餐，基本上只吃了蔬菜和鸡腿肉，糙米饭大概吃了两口，剩下的都丢掉了，有点浪费，罪过。不过为了我得健康也只能如此了。下午吃了一小根香蕉和一个苹果，发现突然没有了下午茶以后，对我减肥大业确实是有正向帮助的。</p>
+<p><strong>总结一哈</strong></p>
+<p>今天整体保持还可以，虽然中午吃了点瓜子和两个溜溜梅…emmmm，周末得把家里的吃的都给弄没了，不然看着总是馋。</p>
+]]></content>
+      <categories>
+        <category>减肥日记</category>
+      </categories>
+      <tags>
+        <tag>减肥</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>减肥日记3</title>
+    <url>/2022/01/06/%E5%87%8F%E8%82%A5%E6%97%A5%E8%AE%B03/</url>
+    <content><![CDATA[<p>今天是2022年1月6日，星期四。昨天晚上是一个难熬的夜晚，饿得不行，跟女朋友视频她还吃东西诱惑我，关了视频久久不能入睡，一直听着单老的评书《三侠剑》，最近很入迷，emmmm应该是最近一年很入迷，听了好几个了，《乱世枭雄》、《白眉大侠》、《童林传》、《三国演义》，记不清什么时候听书走进了我的世界，也是听书学到了很多不知道的历史，虽然成分很大，不过单老对人物的刻画及行为让我大为受益，《乱世枭雄》的张作霖有勇有谋，前期靠人品义气，中期借运而上，后期却被自己的固执与野心带到深渊，不过也可以理解，毕竟人心不足蛇吞象么；《三侠剑》这本书又有不同了，主人公圣英已经是成名侠客，主要讲的是仇人如何与他为仇做对，种种事件下来，总是很气氛，觉得他就是个老好人，这不行那不行，这放过那放过的，没有蒋博方那么快意恩仇。不过反过来想，确应如此，正是因为他行得正、坐得直，才能将买卖做大，才能让众多英雄为其帮忙，甚至卖命，突然的想法是刘备是不是也是这样一个人，扯远了，记一下今天。</p>
+<p><strong>早餐</strong><br>昨天晚上饿到睡不着，不过坚持下来了，早上吃了点瓜子，不多，然后主要是牛奶冲魔芋粉，然后还吃了一个卤蛋，整体热量预估在300-400，正常范围。</p>
+<p><strong>午餐</strong><br><img src="https://p1-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/7070928c8e1545f790799e50bad29249~tplv-k3u1fbpfcp-watermark.image" alt="405981641442512_..jpeg"><br>今天午餐如图了，还可以，热量高点的应该是那个茄子豆角，不过是真的香啊，就应该泡点米饭吃，能干三大碗！哎，只能想想了，下午吃了一个桔子、一个苹果，到六点多的时候实在是饿的心慌，感觉干啥都干不下去，就吃了一个小香蕉…..痛苦，减肥真的挺痛苦的。</p>
+<p><strong>晚餐</strong><br><img src="https://p6-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/0aab144161114a8a9a9647b8d37c7015~tplv-k3u1fbpfcp-watermark.image" alt="eeb2612e-7360-4bdb-a282-ebaf0bc873df-1637311411653.jpg"></p>
+<p>今天是藤椒鸡腿肉减脂餐，还是只吃肉和菜，饭的话基本不吃。希望今天晚上不要太饿。</p>
+<p>运动方面，椭圆机30分钟，健身房的机器都有点问题，不过还是能达到健身的目的的。</p>
+<p><strong>总结</strong><br>又是勉强达到目标的一天，不过已经在逐步的变好了，加油！昨天晚上特别特别饿，但是我居然不想吃肉，也说不上是想吃什么，证明我最近确实吃的太油腻了。不过今天下午突然想起来想喝豆汁，去喝过几次豆汁，还记得第一次是20年冬天，起了一个大早，坐地铁到磁器口，去老磁器口豆汁喝豆汁，因为疫情原因店内不让做，只能外带，排了半个小时的队，然后就在旁边马路牙子跟几个大爷一块蹲着喝，还挺难忘的，哈哈，讲真第一口觉得没什么，没有像很多人描述的那样，我觉得挺能接受的，后面喝着就没什么感觉了，搞点小咸菜，来个烧饼夹肉，美滋滋，后来就去喝过几次，挺好。正好这个周末不用去找女朋友了，准备跑一趟南城，来一碗老北京豆汁喝，棒！</p>
+]]></content>
+      <categories>
+        <category>减肥日记</category>
+      </categories>
+      <tags>
+        <tag>减肥</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>减肥日记4</title>
+    <url>/2022/01/07/%E5%87%8F%E8%82%A5%E6%97%A5%E8%AE%B04/</url>
+    <content><![CDATA[<p>今天是2022年1月7日，星期五，减肥第四天。最近感觉一般，晚上总是睡不着，听书听一个多小时都睡不着，很难受，早上又睡不醒，奇了个怪了。昨天晚上突然想起来以前刷视频看到老饭骨的宫保虾球，就特别想吃，然后连夜下单了2kg的大虾，为了完美复刻又买了一个食物称，明天一定做成功！</p>
+<p><strong>早餐</strong><br>牛奶+魔芋紫薯粉，其他没有了，到公司吃了一个桔子，感觉有点干巴了都，不太好吃了。</p>
+<p><strong>午餐</strong><br><img src="https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/4e92638659fe473a858f649ccd81c304~tplv-k3u1fbpfcp-watermark.image" alt="IMG_3574.JPG"><br>今天中午吃点感觉有点多了，不过酸菜的白肉都挑出去了，紫薯也只吃了一块。特别喜欢这个麻酱羊肉乱炖，很香，但是不敢多吃…中午回家睡不着觉，不知道为啥，，就一直刷视频到起床，来公司以后又感觉没有精神，犹豫了半天终于没喝拿铁咖啡，搞了一杯美式，拼了，感觉晚上更睡不着了。</p>
+<p><strong>晚餐</strong><br>晚上吃了减脂餐，什么鬼的香煎稠鱼，一般般，有点螺丝意面，没吃，丢掉了，明天准备搞一搞，宫爆虾球，虾已经到了，不过好气，食物称很拉胯，电池安不进去，准备退货了。。</p>
+<p><strong>总结</strong><br>4天时间，明显能感觉肚子平了一些，虽然不至于减重多少，但是，肚子平整了很多是真的，加油吧，下周就是过午不食了，感觉有点难度，不过我会坚持下来的，为了瘦下来帅气的我。</p>
+]]></content>
+      <categories>
+        <category>减肥日记</category>
+      </categories>
+      <tags>
+        <tag>减肥</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>减肥日记5</title>
+    <url>/2022/01/10/%E5%87%8F%E8%82%A5%E6%97%A5%E8%AE%B05/</url>
+    <content><![CDATA[<p>今天是2022年1月10日，星期一，减肥的第七天，前两天周六周日没有带电脑回家，所以就没有记录，这里统一记录一下吧。</p>
+<blockquote>
+<p>周六<br>周五晚上睡的有点晚，不对，应该是最近一周睡的都很晚，不知道为什么，就是睡不着，总感觉精力充沛…白天也不困，很奇怪啊，我只能算是它是个好现象吧。</p>
+</blockquote>
+<p>周六早上没有吃饭，一直躺倒10点多，然后去超市买了菜，回来做的八宝饭，做了宫保虾球、一碗香和肘花肠，还整了一杯蓝天白云茉莉茶。不过一碗饭都没吃完，就吃饱了，当真的做饭一小时，吃饭5分钟，刷碗半小时。下午就没怎么吃东西，吃了一小盒砂糖橘，又吃了点蚕豆，整体还可以，虽然吃的挺多的，菜也挺油的，但是晚饭没吃，整体还可以。<br><img src="https://p1-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/010df3c2d78e43af979083491531dc17~tplv-k3u1fbpfcp-watermark.image" alt="周六午餐"><br><img src="https://p1-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/8677efba893745219eeea139a12d1feb~tplv-k3u1fbpfcp-watermark.image" alt="蓝天白云茉莉茶"></p>
+<blockquote>
+<p>周日<br>周日也同样，一直躺倒中午，然后去总部超市买了些东西，回来把昨天的剩饭炒了一下，可真的是丰盛，这碗蛋炒饭可谓是容纳了山珍海味，里面有鲍鱼、扇贝、干香菇、香肠、鸡蛋，再加上八宝饭的各种米，emmmmmmm，但是味道其实一般，不知道为啥，可能是八宝米的原因，有些豆子比较硬，，然后下午就是吃了一盒葡萄，一袋三只松鼠榛子，半袋夏威夷果。晚上就有点涨肚，一直有气，晚上去健身房跑步，跑一会就得走一回打嗝，，很气，最后连跑带颠的整了5公里，用了40多分钟。算是整体运动了一个小时吧，</p>
+</blockquote>
+<p><img src="https://p1-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/78f023b86f7f4cde93936b9244b8b1cb~tplv-k3u1fbpfcp-watermark.image" alt="周日午餐"></p>
+<p>周五下载了一个原神玩玩，本来我不喜欢这种游戏的，但是玩上以后是真香了，周末本来计划去喝豆汁的，但是都玩原神了。。。制作是真的香。<br><img src="https://p1-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/458278c4779c45069ef3e573f6d5bd51~tplv-k3u1fbpfcp-watermark.image" alt="原神"></p>
+<p><strong>总结</strong><br>本周坚持下来了，还不错，算是成功，运动完成了3次，其他的也虽然有点例外，但是正式算是成功，这周开始过午不食了，应该是比较艰辛的，加油吧！骚年。</p>
+<p>———————–这周的—————————-</p>
+<p><strong>早餐</strong><br>早餐就是正常的两勺魔芋代餐粉+一盒牛奶，到公司吃了一个大鸭梨🍐</p>
+<p><strong>午餐</strong><br>因为今天女盆友过来，所以中午就直接定了餐，定点餐给女友吃，我把昨天剩下的炒米饭给吃了，期间吃了两口定的饭，也不算多。下午为了过午不食我都没有吃水果，，心痛。</p>
+<p><strong>晚餐</strong><br>今天腊八，所以熬了点腊八粥，所以还是准备回家去喝点腊八粥，今天就不算了，不过也不会多吃，少喝点，也算过节了，现在的节日确实没意思，就连过年也是一样。手机、电脑各种软件游戏，节日味都冲淡了，小时候家里一到12月份就开始准备年货了，都是自己做的，摊煎饼、烙烙糕、炸丸子、炼猪油、蒸豆包、炸猪肉…,太多了，明显的就能感觉年来了，就很开心，现在就没有这种感觉，不知道是日子比以前好了，还是怎么的，过年也不想买衣服，也不想吃东西，年夜饭也就感觉一般。哎，长大的烦恼。</p>
+]]></content>
+      <categories>
+        <category>减肥日记</category>
+      </categories>
+      <tags>
+        <tag>减肥</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>减肥日记6</title>
+    <url>/2022/01/11/%E5%87%8F%E8%82%A5%E6%97%A5%E8%AE%B06/</url>
+    <content><![CDATA[<p>今天是2022年1月11日，星期二，减肥第9天。今天没啥说的，直接记录一下吧。</p>
+<p><strong>早餐</strong><br>今天早上要早起去洗牙，所以就没吃早餐，直接去洗牙了，不过临走的时候吃了几个腰果，到公司以后吃了一个梨。</p>
+<p><strong>午餐</strong><br>午餐在公司打的饭回家去吃的，所以不好计算吃了多少，目测不算多，吃完饭又吃了点坚果。</p>
+<p><strong>晚餐</strong><br>晚上确实没有吃，应该可以这么说，公司打的饭回去给女朋友吃了，自己在旁边忍受…痛苦，最后没忍住，跑去吃了两口肉，也就没了。有点饿，心态有点动摇。饿的这一周多，从最开始的不想吃肉，到现在非常想吃肉，好想吃肉，尤其是特别油的那种，想想是真香啊，忍着吧，-_-</p>
+]]></content>
+      <categories>
+        <category>减肥日记</category>
+      </categories>
+      <tags>
+        <tag>减肥</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>减肥日记7</title>
+    <url>/2022/01/12/%E5%87%8F%E8%82%A5%E6%97%A5%E8%AE%B07/</url>
+    <content><![CDATA[<p>今天是2022年1月12日，星期三。最近几天可是真的冷啊，骑车回家都冻脑门…今天发现周末买的雪柳发芽了，讲真是有点不可思议，快递过来的时候基本就是个干木头，随便一折就折了，我都寻思放弃了，不过还是给插到花瓶里面了，这几天就明显看到发芽了，期待成品。</p>
+<p><strong>早餐</strong><br>早上送女朋友走，顺便在楼下庆丰吃了点包子，大概4-5个包子 + 小米粥 + 鸡蛋，到公司吃了一个大白梨。</p>
+<p><strong>午餐</strong><br>今天不知道怎么的，啥节日，公司餐厅的饭很不错，吃多了一点…不过应该也还好，大虾，高蛋白（自我安慰），回家睡完了觉又吃了点花生，不多，真的不多…<br><img src="https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/f7cbc30e687448c8b1665424621942fa~tplv-k3u1fbpfcp-watermark.image" alt="WechatIMG41632.jpeg"></p>
+<p><strong>晚餐</strong><br>2点以后确实没吃过东西，连水果都没吃，也算是过午不食了吧，现在也不知道是饿还是馋，就是想吃点东西，但是都忍着没吃。待会去健身房运动，顺便看一集雪中悍刀行，有几天没看了。</p>
+<p>晚上八点，健身完回来更新：真饿啊，饿的我椭圆机都踩不动，就感觉整个人没力气…讲真是痛苦</p>
+]]></content>
+      <categories>
+        <category>减肥日记</category>
+      </categories>
+      <tags>
+        <tag>减肥</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>减肥日记8</title>
+    <url>/2022/01/13/%E5%87%8F%E8%82%A5%E6%97%A5%E8%AE%B08/</url>
+    <content><![CDATA[<p>今天是2022年1月13日，星期四。昨天饿到死，晚上下班回家没忍住，跑去麻辣烫吃了…不过吃的还行，两串生菜、两串菠菜、几串豆腐、一个鸡肝，看着不多。晚上不吃饭是真的痛苦，，，以后晚上还是吃点吧，再加上今天去医院开了治疗幽门螺旋杆菌的药，需要早晚饭前饭后吃，所以就喝一包藕粉。</p>
+]]></content>
+      <categories>
+        <category>减肥日记</category>
+      </categories>
+      <tags>
+        <tag>减肥</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>减肥日记9</title>
+    <url>/2022/01/17/%E5%87%8F%E8%82%A5%E6%97%A5%E8%AE%B09/</url>
+    <content><![CDATA[<p>今天是2022年1月17日，星期一，其实可以宣布本次减肥失败了，计划好定，执行难搞，还是循序渐进吧，</p>
+]]></content>
+      <categories>
+        <category>减肥日记</category>
+      </categories>
+      <tags>
+        <tag>减肥</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>前端算法-leetcode</title>
+    <url>/2022/01/19/%E5%89%8D%E7%AB%AF%E7%AE%97%E6%B3%95-leetcode/</url>
+    <content><![CDATA[<h3 id="1、Z字形字符串"><a href="#1、Z字形字符串" class="headerlink" title="1、Z字形字符串"></a>1、Z字形字符串</h3><p><strong>题目描述：</strong>将一个给定字符串 s 根据给定的行数 numRows ，以从上往下、从左到右进行 Z 字形排列。比如输入字符串为 “PAYPALISHIRING” 行数为 3 时，排列如下：</p>
+<figure class="highlight js"><table><tr><td class="code"><pre><span class="line">P   A   H   N</span><br><span class="line">A P L S I I G</span><br><span class="line">Y   I   R</span><br></pre></td></tr></table></figure>
+<p>之后，你的输出需要从左往右逐行读取，产生出一个新的字符串，比如：”PAHNAPLSIIGYIR”。请你实现这个将字符串进行指定行数变换的函数：<br><strong>示例 1：</strong><br>输入：s = “PAYPALISHIRING”, numRows = 3<br>输出：”PAHNAPLSIIGYIR”<br><strong>示例 2：</strong><br>输入：s = “PAYPALISHIRING”, numRows = 4<br>输出：”PINALSIGYAHRPI”<br>解释：<br>P     I    N<br>A   L S  I G<br>Y A   H R<br>P     I<br><strong>提示：</strong><br>1 &lt;= s.length &lt;= 1000<br>s 由英文字母（小写和大写）、’,’ 和 ‘.’ 组成<br>1 &lt;= numRows &lt;= 1000</p>
+<figure class="highlight js"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">strConvert</span>(<span class="params">str,num</span>)</span>&#123;</span><br><span class="line">  <span class="keyword">if</span>(!num || num === <span class="number">1</span>)&#123;</span><br><span class="line">    <span class="keyword">return</span> str</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">if</span>(str.length &lt; num)&#123;</span><br><span class="line">    <span class="keyword">return</span> str</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">const</span> len = <span class="built_in">Math</span>.min(str.length, num)</span><br><span class="line">  <span class="keyword">const</span> rows = <span class="keyword">new</span> <span class="built_in">Array</span>(len).fill(<span class="string">&#x27;&#x27;</span>)</span><br><span class="line">  <span class="keyword">let</span> down = <span class="literal">false</span></span><br><span class="line">  <span class="keyword">let</span> flag = <span class="number">0</span></span><br><span class="line">  <span class="keyword">for</span>(<span class="keyword">let</span> s <span class="keyword">of</span> str)&#123;</span><br><span class="line">    rows[flag] += s</span><br><span class="line">    <span class="keyword">if</span>(flag === <span class="number">0</span> || flag === num - <span class="number">1</span>)&#123;</span><br><span class="line">      down = !down</span><br><span class="line">    &#125; </span><br><span class="line">    flag += down ? <span class="number">1</span> : -<span class="number">1</span> </span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">return</span> rows.reduce(<span class="function">(<span class="params">p, c</span>)=&gt;</span>(p+=c),<span class="string">&#x27;&#x27;</span>)</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p><strong>解题思路：</strong></p>
+<blockquote>
+<ul>
+<li>整体的思路是遍历字符串，遍历过程中将每行都看成新的字符串构成字符串数组，最后再将该数组拼接起来即可</li>
+<li>如果 numRows=1numRows=1 则说明当前字符串即为结果，直接返回</li>
+<li>否则整个字符串需要经历，向下向右，向下向右，这样的反复循环过程，设定 down 变量表示是否向下，loc 变量表示当前字符串数组的下标</li>
+<li>如果 down 为 true，则 loc+=1，字符串数组下标向后移动，将当前字符加入当前字符串中</li>
+<li>如果 down 为 false，则表示向右，则 loc-=1，字符串数组下标向前移动，将当前字符加入当前字符串中</li>
+<li>时间复杂度：O(n)，n为字符串s的长度</li>
+</ul>
+</blockquote>
+<h3 id="2、最长回文子串"><a href="#2、最长回文子串" class="headerlink" title="2、最长回文子串"></a>2、最长回文子串</h3><p><strong>题目描述：</strong>给你一个字符串 s，找到 s 中最长的回文子串。<br><strong>示例 1：</strong><br>输入：s = “babad”<br>输出：”bab”<br>解释：”aba” 同样是符合题意的答案。</p>
+<p><strong>提示：</strong><br>1 &lt;= s.length &lt;= 1000<br>s 仅由数字和英文字母（大写和/或小写）组成</p>
+<figure class="highlight js"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">getPalindrome</span>(<span class="params">s</span>)</span>&#123;</span><br><span class="line">  <span class="keyword">let</span> res = <span class="string">&#x27;&#x27;</span></span><br><span class="line">  <span class="comment">// left为左坐标，right为右坐标</span></span><br><span class="line">  <span class="keyword">const</span> palindromeStr = <span class="function">(<span class="params">left,right</span>)=&gt;</span>&#123;</span><br><span class="line">    <span class="keyword">while</span>(left &gt;= <span class="number">0</span> &amp;&amp; right &lt; s.length &amp;&amp; s[left]===s[right])&#123;</span><br><span class="line">      left--;</span><br><span class="line">      right++;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> s.substr(left + <span class="number">1</span>, right - left - <span class="number">1</span>);</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">for</span>(<span class="keyword">let</span> i = <span class="number">0</span>; i &lt; s.length; i++)&#123;</span><br><span class="line">    <span class="keyword">const</span> s1 = palindromeStr(i,i)</span><br><span class="line">    <span class="keyword">let</span> s2 = <span class="string">&#x27;&#x27;</span></span><br><span class="line">    <span class="keyword">if</span>(s[i]===s[i+<span class="number">1</span>])&#123;</span><br><span class="line">      s2 = palindromeStr(i,i+<span class="number">1</span>)</span><br><span class="line">    &#125;</span><br><span class="line">    res = s1.length &gt; res.length ? s1 : res</span><br><span class="line">    res = s2.length &gt; res.length ? s2 : res</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">return</span> res</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+<blockquote>
+<p><strong>解题思路：</strong>回文字符串的特点是从中间开始向外扩散，相对应的字符相等。所以我们只需要循环字符串，每一个字符都向外扩散到最大串，然后对比出整体最大即可。</p>
+</blockquote>
+<h3 id="3、寻找两个正序数组的中位数"><a href="#3、寻找两个正序数组的中位数" class="headerlink" title="3、寻找两个正序数组的中位数"></a>3、寻找两个正序数组的中位数</h3><p><strong>题目描述：</strong>给定两个大小分别为 m 和 n 的正序（从小到大）数组 nums1 和 nums2。请你找出并返回这两个正序数组的中位数。<br><strong>示例1：</strong><br>输入：nums1 = [1,3], nums2 = [2]<br>输出：2.00000<br>解释：合并数组 = [1,2,3] ，中位数 2</p>
+<figure class="highlight js"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">findMid</span>(<span class="params">num1, num2</span>) </span>&#123;</span><br><span class="line">  <span class="keyword">const</span> len1 = num1.length</span><br><span class="line">  <span class="keyword">const</span> len2 = num2.length</span><br><span class="line">  <span class="keyword">let</span> i = len1 - <span class="number">1</span></span><br><span class="line">  <span class="keyword">let</span> j = len2 - <span class="number">1</span></span><br><span class="line">  <span class="keyword">let</span> k = len1 + len2 - <span class="number">1</span></span><br><span class="line"></span><br><span class="line">  <span class="keyword">while</span> (j &gt;= <span class="number">0</span> &amp;&amp; i &gt;= <span class="number">0</span>) &#123;</span><br><span class="line">    <span class="keyword">if</span> (num1[i] &gt; num2[j]) &#123;</span><br><span class="line">      num1[k] = num1[i]</span><br><span class="line">      i--</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">      num1[k] = num2[j]</span><br><span class="line">      j--</span><br><span class="line">    &#125;</span><br><span class="line">    k--</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">if</span> (j &gt; <span class="number">0</span>) &#123;</span><br><span class="line">    <span class="keyword">while</span> (j &gt;= <span class="number">0</span>) &#123;</span><br><span class="line">      num1[k] = num2[j]</span><br><span class="line">      j--;</span><br><span class="line">      k--</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">const</span> len = len1 + len2</span><br><span class="line">  <span class="keyword">let</span> mid = len % <span class="number">2</span> === <span class="number">0</span> ? (num1[len / <span class="number">2</span>] + num1[len / <span class="number">2</span> - <span class="number">1</span>]) / <span class="number">2</span> : num1[<span class="built_in">Math</span>.floor(len / <span class="number">2</span>)]</span><br><span class="line">  <span class="keyword">return</span> mid</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p><strong>思路描述：</strong>先通过双指针法，合并排序两个数组，然后根据合并后的数组找到中位数。如果可以用es6语法，可以直接用num1.concat(num2).sort()排序即可。</p>
+<h3 id="4、实现一个对象的-flatten-方法"><a href="#4、实现一个对象的-flatten-方法" class="headerlink" title="4、实现一个对象的 flatten 方法"></a>4、实现一个对象的 flatten 方法</h3><p><strong>示例：</strong></p>
+<figure class="highlight js"><table><tr><td class="code"><pre><span class="line"><span class="keyword">const</span> obj = &#123;</span><br><span class="line">	<span class="attr">a</span>: &#123;</span><br><span class="line">  	<span class="attr">b</span>: <span class="number">1</span>,</span><br><span class="line">		<span class="attr">c</span>: <span class="number">2</span>,</span><br><span class="line">		<span class="attr">d</span>: &#123;</span><br><span class="line">			<span class="attr">e</span>: <span class="number">5</span></span><br><span class="line">		&#125;</span><br><span class="line">  &#125;,</span><br><span class="line">  <span class="attr">b</span>: [<span class="number">1</span>, <span class="number">3</span>, &#123;<span class="attr">a</span>: <span class="number">2</span>, <span class="attr">b</span>: <span class="number">3</span>&#125;],</span><br><span class="line">  <span class="attr">c</span>: <span class="number">3</span></span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">// flatten(obj)&#123;&#125; 返回：</span></span><br><span class="line"><span class="comment">// &#123;</span></span><br><span class="line"><span class="comment">//   &#x27;a.b&#x27;: 1,</span></span><br><span class="line"><span class="comment">//   &#x27;a.c&#x27;: 2,</span></span><br><span class="line"><span class="comment">//   &#x27;a.d.e&#x27;: 5,</span></span><br><span class="line"><span class="comment">//   &#x27;b[0]&#x27;: 1,</span></span><br><span class="line"><span class="comment">//   &#x27;b[1]&#x27;: 3,</span></span><br><span class="line"><span class="comment">//   &#x27;b[2].a&#x27;: 2,</span></span><br><span class="line"><span class="comment">//   &#x27;b[2].b&#x27;: 3</span></span><br><span class="line"><span class="comment">//    c: 3</span></span><br><span class="line"><span class="comment">// &#125;</span></span><br></pre></td></tr></table></figure>
+<figure class="highlight js"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">flat</span>(<span class="params">obj, key = <span class="string">&quot;&quot;</span>, res = &#123;&#125;, isArray = <span class="literal">false</span></span>) </span>&#123; </span><br><span class="line">  <span class="keyword">for</span> (<span class="keyword">let</span> [k, v] <span class="keyword">of</span> <span class="built_in">Object</span>.entries(obj)) &#123; </span><br><span class="line">    <span class="keyword">if</span> (<span class="built_in">Array</span>.isArray(v)) &#123; </span><br><span class="line">      <span class="keyword">let</span> tmp = isArray ? key + <span class="string">&quot;[&quot;</span> + k + <span class="string">&quot;]&quot;</span> : key + k </span><br><span class="line">      flat(v, tmp, res, <span class="literal">true</span>) </span><br><span class="line">    &#125; <span class="keyword">else</span> <span class="keyword">if</span> (<span class="keyword">typeof</span> v === <span class="string">&quot;object&quot;</span>) &#123; </span><br><span class="line">      <span class="keyword">let</span> tmp = isArray ? key + <span class="string">&quot;[&quot;</span> + k + <span class="string">&quot;].&quot;</span> : key + k + <span class="string">&quot;.&quot;</span> </span><br><span class="line">      flat(v, tmp, res) </span><br><span class="line">    &#125; <span class="keyword">else</span> &#123; </span><br><span class="line">      <span class="keyword">let</span> tmp = isArray ? key + <span class="string">&quot;[&quot;</span> + k + <span class="string">&quot;]&quot;</span> : key + k </span><br><span class="line">      res[tmp] = v </span><br><span class="line">    &#125; </span><br><span class="line">  &#125; </span><br><span class="line">  <span class="keyword">return</span> res </span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"></span><br></pre></td></tr></table></figure>]]></content>
+      <categories>
+        <category>前端算法</category>
+      </categories>
+      <tags>
+        <tag>刷题</tag>
+        <tag>算法</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>前端算法-二叉树</title>
+    <url>/2022/01/07/%E5%89%8D%E7%AB%AF%E7%AE%97%E6%B3%95-%E4%BA%8C%E5%8F%89%E6%A0%91/</url>
+    <content><![CDATA[<h3 id="1、二叉树遍历"><a href="#1、二叉树遍历" class="headerlink" title="1、二叉树遍历"></a>1、二叉树遍历</h3><figure class="highlight js"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 二叉树</span></span><br><span class="line"><span class="keyword">const</span> tree = &#123;<span class="attr">val</span>:<span class="number">1</span>,<span class="attr">left</span>:&#123;<span class="attr">val</span>:<span class="number">2</span>,<span class="attr">left</span>:&#123;<span class="attr">val</span>:<span class="number">4</span>&#125;,<span class="attr">right</span>:&#123;<span class="attr">val</span>:<span class="number">5</span>&#125;&#125;,<span class="attr">right</span>: &#123;<span class="attr">val</span>:<span class="number">3</span>,<span class="attr">left</span>:&#123;<span class="attr">val</span>:<span class="number">6</span>&#125;,<span class="attr">right</span>:&#123;<span class="attr">val</span>:<span class="number">7</span>&#125;&#125;&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">//先序遍历</span></span><br><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">firstTraverse</span>(<span class="params">tree</span>)</span>&#123;</span><br><span class="line">  <span class="keyword">const</span> res = []</span><br><span class="line">  <span class="keyword">const</span> stack = []</span><br><span class="line">  stack.push(tree)</span><br><span class="line"></span><br><span class="line">  <span class="keyword">while</span>(stack.length)&#123;</span><br><span class="line">    <span class="keyword">const</span> cur = stack.pop()</span><br><span class="line">    res.push(cur.val)</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span>(cur.right)&#123;</span><br><span class="line">      stack.push(cur.right)</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">if</span>(cur.left)&#123;</span><br><span class="line">      stack.push(cur.left)</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">return</span> res</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">//中序遍历</span></span><br><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">middleTraverse</span>(<span class="params">tree</span>)</span>&#123;</span><br><span class="line">  <span class="keyword">const</span> res = []</span><br><span class="line">  <span class="keyword">const</span> stack = []</span><br><span class="line"></span><br><span class="line">  <span class="keyword">let</span> cur = tree</span><br><span class="line">  <span class="keyword">while</span>(cur || stack.length&gt;<span class="number">0</span>)&#123;</span><br><span class="line">    <span class="keyword">while</span>(cur)&#123;</span><br><span class="line">      stack.push(cur)</span><br><span class="line">      cur = cur.left</span><br><span class="line">    &#125;</span><br><span class="line">    cur = stack.pop()</span><br><span class="line">    res.push(cur.val)</span><br><span class="line"></span><br><span class="line">    cur = cur.right</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">return</span> res</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 后序遍历</span></span><br><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">lastTraverse</span>(<span class="params">tree</span>)</span>&#123;</span><br><span class="line">  <span class="keyword">const</span> res = []</span><br><span class="line">  <span class="keyword">const</span> stack = []</span><br><span class="line">  stack.push(tree)</span><br><span class="line">  <span class="keyword">while</span>(stack.length)&#123;</span><br><span class="line">    <span class="keyword">const</span> cur = stack.pop()</span><br><span class="line">    res.unshift(cur.val)</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span>(cur.left)&#123;</span><br><span class="line">      stack.push(cur.left)</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">if</span>(cur.right)&#123;</span><br><span class="line">      stack.push(cur.right)</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">return</span> res</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="built_in">console</span>.log(firstTraverse(tree),middleTraverse(tree),lastTraverse(tree));</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+<h3 id="2、层序遍历衍生问题"><a href="#2、层序遍历衍生问题" class="headerlink" title="2、层序遍历衍生问题"></a>2、层序遍历衍生问题</h3><p><strong>题目描述：</strong>给你一个二叉树，请你返回其按 层序遍历 得到的节点值。 （即逐层地，从左到右访问所有节点）。<br>示例：二叉树：[3,9,20,null,null,15,7]</p>
+<blockquote>
+<p> 3<br> / <br>9  20<br>  /  <br> 15   7<br>返回其层次遍历结果：<br>[<br>[3],<br>[9,20],<br>[15,7]<br>]</p>
+</blockquote>
+<figure class="highlight js"><table><tr><td class="code"><pre><span class="line"></span><br><span class="line"><span class="keyword">const</span> tree = &#123;<span class="attr">val</span>:<span class="number">1</span>,<span class="attr">left</span>:&#123;<span class="attr">val</span>:<span class="number">2</span>,<span class="attr">left</span>:&#123;<span class="attr">val</span>:<span class="number">4</span>&#125;,<span class="attr">right</span>:&#123;<span class="attr">val</span>:<span class="number">5</span>&#125;&#125;,<span class="attr">right</span>: &#123;<span class="attr">val</span>:<span class="number">3</span>,<span class="attr">left</span>:&#123;<span class="attr">val</span>:<span class="number">6</span>&#125;,<span class="attr">right</span>:&#123;<span class="attr">val</span>:<span class="number">7</span>&#125;&#125;&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">levelOrder</span>(<span class="params">tree</span>)</span>&#123;</span><br><span class="line">  <span class="keyword">if</span>(!tree)&#123;</span><br><span class="line">    <span class="keyword">return</span> []</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">const</span> res = []</span><br><span class="line">  <span class="keyword">const</span> queue = []</span><br><span class="line">  queue.push(tree)</span><br><span class="line"> </span><br><span class="line">  <span class="keyword">while</span>(queue.length)&#123;</span><br><span class="line">    <span class="keyword">const</span> level = []</span><br><span class="line">    <span class="keyword">const</span> len = queue.length;</span><br><span class="line">    <span class="keyword">for</span>(<span class="keyword">let</span> i=<span class="number">0</span>;i&lt;len;i++)&#123;</span><br><span class="line">      <span class="keyword">const</span> top = queue.shift()</span><br><span class="line">      level.push(top.val)</span><br><span class="line">      <span class="keyword">if</span>(top.left)&#123;</span><br><span class="line">        queue.push(top.left)</span><br><span class="line">      &#125;</span><br><span class="line">      <span class="keyword">if</span>(top.right)&#123;</span><br><span class="line">        queue.push(top.right)</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    res.push(level)</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">return</span> res</span><br><span class="line">&#125;</span><br><span class="line"><span class="built_in">console</span>.log(levelOrder(tree));</span><br></pre></td></tr></table></figure>
+
+<h3 id="3、判断是否为二叉搜索树"><a href="#3、判断是否为二叉搜索树" class="headerlink" title="3、判断是否为二叉搜索树"></a>3、判断是否为二叉搜索树</h3><p><strong>题目描述：</strong>给定一个二叉树，判断其是否是一个有效的二叉搜索树。<br>输入:</p>
+<blockquote>
+<p>  2<br>   / <br>  1   3<br>输出: true</p>
+</blockquote>
+<figure class="highlight js"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">isSerachTree</span>(<span class="params">tree</span>)</span>&#123;</span><br><span class="line">  </span><br><span class="line">  <span class="keyword">if</span>(!tree)&#123;</span><br><span class="line">    <span class="keyword">return</span> <span class="literal">false</span></span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">if</span>(tree.left)&#123;</span><br><span class="line">    <span class="keyword">if</span>(tree.left.val&gt;tree.val)&#123;</span><br><span class="line">      <span class="keyword">return</span> <span class="literal">false</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    isSerachTree(tree.left)</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">if</span>(tree.right)&#123;</span><br><span class="line">    <span class="keyword">if</span>(tree.right.val&lt;tree.val)&#123;</span><br><span class="line">      <span class="keyword">return</span> <span class="literal">false</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    isSerachTree(tree.right)</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">return</span> <span class="literal">true</span></span><br><span class="line"></span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+
+
+<h3 id="4、将排序数组转化为二叉搜索树"><a href="#4、将排序数组转化为二叉搜索树" class="headerlink" title="4、将排序数组转化为二叉搜索树"></a>4、将排序数组转化为二叉搜索树</h3><p><strong>题目描述：</strong>将一个按照升序排列的有序数组，转换为一棵高度平衡二叉搜索树。<br><strong>注意：</strong>本题中，一个高度平衡二叉树是指一个二叉树每个节点 的左右两个子树的高度差的绝对值不超过 1。<br><strong>示例:</strong><br>给定有序数组: [-10,-3,0,5,9],<br>一个可能的答案是：[0,-3,9,-10,null,5]，它可以表示下面这个高度平衡二叉搜索树：</p>
+<figure class="highlight js"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">arrayToTree</span>(<span class="params">nums</span>)</span>&#123;</span><br><span class="line">  <span class="keyword">if</span>(!nums.length)&#123;</span><br><span class="line">    <span class="keyword">return</span> <span class="literal">null</span></span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">const</span> transfrom = <span class="function">(<span class="params">low, high</span>)=&gt;</span>&#123;</span><br><span class="line">    <span class="keyword">if</span>(low&gt;high)&#123;</span><br><span class="line">      <span class="keyword">return</span> <span class="literal">null</span></span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">const</span> mid = <span class="built_in">Math</span>.floor(low + (high - low) / <span class="number">2</span>)</span><br><span class="line">    <span class="keyword">const</span> cur = &#123;<span class="attr">val</span>: nums[mid],<span class="attr">left</span>:<span class="literal">null</span>,<span class="attr">right</span>:<span class="literal">null</span>&#125;</span><br><span class="line">    cur.left = transfrom(low, mid - <span class="number">1</span>)</span><br><span class="line">    cur.right = transfrom(mid + <span class="number">1</span>, high)</span><br><span class="line">    <span class="keyword">return</span> cur</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">const</span> tree = transfrom(<span class="number">0</span>, nums.length - <span class="number">1</span>)</span><br><span class="line">  <span class="keyword">return</span> tree</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="built_in">console</span>.log( arrayToTree([-<span class="number">10</span>,-<span class="number">3</span>,<span class="number">0</span>,<span class="number">5</span>,<span class="number">9</span>]));</span><br></pre></td></tr></table></figure>
+
+<p><strong>解题思路：</strong>高度平衡的二叉排序数，表示左右子树之间高度差小于等于1，所以，根据二分法，不管节点是奇数位还是偶数位，左右两边最大差也就是1，所以，从中间劈开，左右两边各为左右子树即可，而且数组为升序的有序数组，所以从中间劈开后一定符合二叉搜索树的做小右大的规则。</p>
+<h3 id="5、构造一棵平衡二叉树"><a href="#5、构造一棵平衡二叉树" class="headerlink" title="5、构造一棵平衡二叉树"></a>5、构造一棵平衡二叉树</h3><p><strong>题目描述：</strong>给你一棵二叉搜索树，请你返回一棵平衡后的二叉搜索树，新生成的树应该与原来的树有着相同的节点值<br><strong>示例：</strong><br>输入：root = [1,null,2,null,3,null,4,null,null]<br>输出：[2,1,3,null,null,null,4]<br>解释：这不是唯一的正确答案，[3,1,4,null,2,null,null] 也是一个可行的构造方案。</p>
+<figure class="highlight js"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">balanceBST</span>(<span class="params">tree</span>)</span>&#123;</span><br><span class="line">  <span class="keyword">const</span> nums = []</span><br><span class="line">  <span class="comment">//中序遍历取到升序数组</span></span><br><span class="line">  <span class="keyword">const</span> middleFn = <span class="function">(<span class="params">tree</span>)=&gt;</span>&#123;</span><br><span class="line">    <span class="keyword">if</span>(!tree)&#123;</span><br><span class="line">      <span class="keyword">return</span></span><br><span class="line">    &#125;</span><br><span class="line">    middleFn(tree.left)</span><br><span class="line">    nums.push(tree.val)</span><br><span class="line">    middleFn(tree.right)</span><br><span class="line">  &#125;</span><br><span class="line">  </span><br><span class="line">  <span class="comment">//根据升序数组获取平衡二叉树</span></span><br><span class="line">  <span class="keyword">const</span> transfrom = <span class="function">(<span class="params">low, high</span>)=&gt;</span>&#123;</span><br><span class="line">    <span class="keyword">if</span>(low &gt; high)&#123;</span><br><span class="line">      <span class="keyword">return</span> <span class="literal">null</span></span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">const</span> mid = <span class="built_in">Math</span>.floor(low + (high - low) / <span class="number">2</span>) </span><br><span class="line">    <span class="keyword">const</span> cur = &#123;<span class="attr">val</span>:nums[mid],<span class="attr">left</span>:<span class="literal">null</span>,<span class="attr">right</span>:<span class="literal">null</span>&#125;</span><br><span class="line">    cur.left = transfrom(low, mid - <span class="number">1</span>)</span><br><span class="line">    cur.right = transfrom(mid + <span class="number">1</span>, high)</span><br><span class="line">    <span class="keyword">return</span> cur</span><br><span class="line">  &#125;</span><br><span class="line">  middleFn(tree) </span><br><span class="line"></span><br><span class="line">  <span class="keyword">return</span> transfrom(<span class="number">0</span>,nums.length - <span class="number">1</span>)</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">const</span> tree = &#123;</span><br><span class="line">  <span class="attr">val</span>:<span class="number">5</span>,</span><br><span class="line">  <span class="attr">left</span>:&#123;</span><br><span class="line">    <span class="attr">val</span>:<span class="number">4</span>,</span><br><span class="line">    <span class="attr">left</span>:&#123;</span><br><span class="line">      <span class="attr">val</span>:<span class="number">3</span>,</span><br><span class="line">      <span class="attr">left</span>:&#123;</span><br><span class="line">        <span class="attr">val</span>:<span class="number">2</span>,</span><br><span class="line">        <span class="attr">left</span>:&#123;</span><br><span class="line">          <span class="attr">val</span>:<span class="number">1</span></span><br><span class="line">        &#125;</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;,</span><br><span class="line">  &#125;,</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="built_in">console</span>.log(balanceBST(tree),balanceBST(tree));</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p><strong>解题思路：</strong>因为题目给了一个二叉搜索树，而搜索二叉树的中序遍历就是会得到一个升序的数组，所以，在根据升序数组用二分法获取一个平衡二叉树。</p>
+]]></content>
+      <categories>
+        <category>前端算法</category>
+      </categories>
+      <tags>
+        <tag>刷题</tag>
+        <tag>算法</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>前端算法-动态规划</title>
+    <url>/2022/01/12/%E5%89%8D%E7%AB%AF%E7%AE%97%E6%B3%95-%E5%8A%A8%E6%80%81%E8%A7%84%E5%88%92/</url>
+    <content><![CDATA[<h3 id="1、爬楼梯"><a href="#1、爬楼梯" class="headerlink" title="1、爬楼梯"></a>1、爬楼梯</h3><p>题目描述：假设你正在爬楼梯。需要 n 阶你才能到达楼顶。每次你可以爬 1 或 2 个台阶。你有多少种不同的方法可以爬到楼顶呢？<br><strong>注意：</strong>给定 n 是一个正整数。<br><strong>示例：</strong><br>输入： 2<br>输出： 2<br>输入： 3<br>输出： 3</p>
+<blockquote>
+<p>记忆搜索法</p>
+</blockquote>
+<figure class="highlight js"><table><tr><td class="code"><pre><span class="line"><span class="keyword">const</span> f = []</span><br><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">climbStairs</span>(<span class="params">n</span>)</span>&#123;</span><br><span class="line">  <span class="keyword">if</span>(n===<span class="number">1</span>)&#123;</span><br><span class="line">    <span class="keyword">return</span> <span class="number">1</span></span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">if</span>(n===<span class="number">2</span>)&#123;</span><br><span class="line">    <span class="keyword">return</span> <span class="number">2</span></span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">if</span>(!f[n])&#123;</span><br><span class="line">    <span class="keyword">return</span> climbStairs(n-<span class="number">1</span>) + climbStairs(n-<span class="number">2</span>)</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">return</span> f[n]</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<blockquote>
+<p>动态规划</p>
+</blockquote>
+<figure class="highlight js"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">dynamic</span>(<span class="params">n</span>)</span>&#123;</span><br><span class="line">  <span class="keyword">const</span> f = []</span><br><span class="line">  <span class="keyword">const</span> f[<span class="number">1</span>] = <span class="number">1</span></span><br><span class="line">  <span class="keyword">const</span> f[<span class="number">2</span>] = <span class="number">2</span></span><br><span class="line"></span><br><span class="line">  <span class="keyword">for</span>(<span class="keyword">let</span> i = <span class="number">3</span>; i &lt; n; i++)&#123;</span><br><span class="line">    f[i] = f[i-<span class="number">1</span>] + f[i-<span class="number">2</span>]</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">return</span> f[n]</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p><strong>解题思路：</strong>重点找到状态转移方程式f(n) = f(n-1) + f(n-2)</p>
+<h3 id="2、“最值”型问题典范：如何优雅地找硬币"><a href="#2、“最值”型问题典范：如何优雅地找硬币" class="headerlink" title="2、“最值”型问题典范：如何优雅地找硬币"></a>2、“最值”型问题典范：如何优雅地找硬币</h3><p><strong>题目描述：</strong>给定不同面额的硬币 coins 和一个总金额 amount。编写一个函数来计算可以凑成总金额所需的最少的硬币个数。如果没有任何一种硬币组合能组成总金额，返回 -1。<br><strong>示例1：</strong><br>输入: coins = [1, 2, 5], amount = 11<br>输出: 3<br>解释: 11 = 5 + 5 + 1<br><strong>示例2：</strong><br>输入: coins = [2], amount = 3<br>输出: -1<br>提示：最值问题是动态规划的常见对口题型，见到最值问题，应该想到动态规划</p>
+<pre><code class="js">function findCoins(amount,coins)&#123;
+  const f = []
+  f[0] = 0
+  for(let i = 1; i &lt;= amount; i++)&#123;
+    //定义f[i]为最大值，确保后面交换成功
+    f[i] = Infinity
+    //定义一个数组用于存储
+    let arr = []
+    for(let j = 0; j &lt; coins.length; j++ )&#123;
+      if(i - coins[j] &gt;= 0)&#123;
+        arr.push(f[i - coins[j]] + 1)
+      &#125;
+    &#125;
+    f[i] = Math.min(...arr)
+  &#125;
+  if(f[amount] === Infinity)&#123;
+    return -1
+  &#125;
+  return f[amount]
+&#125;
+</code></pre>
+<p><strong>解题思路：</strong> 状态转移方程式 f[amount] = Math.min(f[amount - coins[0]] + 1,f[amount - coins[1]] + 1 …..)</p>
+<h3 id="3、背包模型"><a href="#3、背包模型" class="headerlink" title="3、背包模型"></a>3、背包模型</h3><p><strong>题目描述：</strong>有 n 件物品，物品体积用一个名为 w 的数组存起来，物品的价值用一个名为 value 的数组存起来；每件物品的体积用 w[i] 来表示，每件物品的价值用 value[i] 来表示。现在有一个容量为 c 的背包，问你如何选取物品放入背包，才能使得背包内的物品总价值最大？<br>注意：每种物品都只有1件</p>
+]]></content>
+      <categories>
+        <category>前端算法</category>
+      </categories>
+      <tags>
+        <tag>刷题</tag>
+        <tag>算法</tag>
+        <tag>动态规划</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>前端算法-排序</title>
+    <url>/2022/01/10/%E5%89%8D%E7%AB%AF%E7%AE%97%E6%B3%95-%E6%8E%92%E5%BA%8F/</url>
+    <content><![CDATA[<h3 id="1、冒泡排序"><a href="#1、冒泡排序" class="headerlink" title="1、冒泡排序"></a>1、冒泡排序</h3><figure class="highlight js"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">bubbleSort</span>(<span class="params">arr</span>)</span>&#123;</span><br><span class="line">  <span class="keyword">for</span>(<span class="keyword">let</span> i = <span class="number">0</span>; i &lt; arr.length; i++)&#123;</span><br><span class="line">    <span class="keyword">for</span>(<span class="keyword">let</span> j = <span class="number">0</span>; j &lt; arr.length - <span class="number">1</span>; j++)&#123;</span><br><span class="line">      <span class="keyword">if</span>(arr[j] &gt; arr[i])&#123;</span><br><span class="line">        <span class="keyword">const</span> temp = arr[i]</span><br><span class="line">        arr[i] = arr[j]</span><br><span class="line">        arr[j] = temp</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">return</span> arr</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="2、选择排序"><a href="#2、选择排序" class="headerlink" title="2、选择排序"></a>2、选择排序</h3><figure class="highlight js"><table><tr><td class="code"><pre><span class="line"><span class="comment">//选择排序，重点是找最小值</span></span><br><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">selectSort</span>(<span class="params">arr</span>)</span>&#123;</span><br><span class="line">  <span class="comment">// 定义最小值下标</span></span><br><span class="line">  <span class="keyword">let</span> minIndex = <span class="number">0</span></span><br><span class="line">  <span class="comment">//外层循环最后一位一定是最大值，不需要判断</span></span><br><span class="line">  <span class="keyword">for</span>(<span class="keyword">let</span> i = <span class="number">0</span>; i &lt; arr.length - <span class="number">1</span>; i++)&#123;</span><br><span class="line">    minIndex = i</span><br><span class="line">    <span class="keyword">for</span>(<span class="keyword">let</span> j = i; j &lt; arr.length; j++)&#123;</span><br><span class="line">       <span class="keyword">if</span>(arr[j] &lt; arr[i])&#123;</span><br><span class="line">         minIndex = j</span><br><span class="line">       &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">if</span>(minIndex !== i)&#123;</span><br><span class="line">      [arr[minIndex],arr[i]] = [arr[i],arr[minIndex]]</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">return</span> arr</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+<h3 id="3、插入排序"><a href="#3、插入排序" class="headerlink" title="3、插入排序"></a>3、插入排序</h3><figure class="highlight js"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">insertSort</span>(<span class="params">arr</span>) </span>&#123;</span><br><span class="line">  <span class="comment">// 缓存数组长度</span></span><br><span class="line">  <span class="keyword">const</span> len = arr.length</span><br><span class="line">  <span class="comment">// temp 用来保存当前需要插入的元素</span></span><br><span class="line">  <span class="keyword">let</span> temp  </span><br><span class="line">  <span class="comment">// i用于标识每次被插入的元素的索引</span></span><br><span class="line">  <span class="keyword">for</span>(<span class="keyword">let</span> i = <span class="number">1</span>;i &lt; len; i++) &#123;</span><br><span class="line">    <span class="comment">// j用于帮助 temp 寻找自己应该有的定位</span></span><br><span class="line">    <span class="keyword">let</span> j = i</span><br><span class="line">    temp = arr[i]  </span><br><span class="line">    <span class="comment">// 判断 j 前面一个元素是否比 temp 大</span></span><br><span class="line">    <span class="keyword">while</span>(j &gt; <span class="number">0</span> &amp;&amp; arr[j-<span class="number">1</span>] &gt; temp) &#123;</span><br><span class="line">      <span class="comment">// 如果是，则将 j 前面的一个元素后移一位，为 temp 让出位置</span></span><br><span class="line">      arr[j] = arr[j-<span class="number">1</span>]   </span><br><span class="line">      j--</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">// 循环让位，最后得到的 j 就是 temp 的正确索引</span></span><br><span class="line">    arr[j] = temp</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">return</span> arr</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="4、归并排序"><a href="#4、归并排序" class="headerlink" title="4、归并排序"></a>4、归并排序</h3><figure class="highlight js"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">mergeArr</span>(<span class="params">arr1,arr2</span>)</span>&#123;</span><br><span class="line">  <span class="keyword">let</span> i = <span class="number">0</span></span><br><span class="line">  <span class="keyword">let</span> j = <span class="number">0</span></span><br><span class="line">  <span class="keyword">const</span> res = []</span><br><span class="line"></span><br><span class="line">  <span class="keyword">while</span>(i &lt; arr1.length &amp;&amp; j &lt; arr2.length)&#123;</span><br><span class="line">    <span class="keyword">if</span>(arr1[i] &gt; arr2[j])&#123;</span><br><span class="line">      res.push(arr2[j])</span><br><span class="line">      j++</span><br><span class="line">    &#125;<span class="keyword">else</span>&#123;</span><br><span class="line">      res.push(arr1[i])</span><br><span class="line">      i++</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="comment">//不管哪一个循环完了，剩下的直接合并到数组</span></span><br><span class="line">  <span class="keyword">if</span>(i &lt; arr1.length)&#123;</span><br><span class="line">    <span class="keyword">return</span> res.concat(arr1.slice(i, arr1.length))</span><br><span class="line">  &#125;<span class="keyword">else</span>&#123;</span><br><span class="line">    <span class="keyword">return</span> res.concat(arr2.slice(j,arr2.length))</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">mergeSort</span>(<span class="params">arr</span>)</span>&#123;</span><br><span class="line">  <span class="keyword">const</span> len = arr.length</span><br><span class="line">  <span class="keyword">if</span>(len &lt;= <span class="number">1</span>)&#123;</span><br><span class="line">    <span class="keyword">return</span> arr</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">const</span> mid = <span class="built_in">Math</span>.floor(len / <span class="number">2</span>)</span><br><span class="line">  <span class="keyword">const</span> left = mergeSort(arr.slice(<span class="number">0</span>, mid))</span><br><span class="line">  <span class="keyword">const</span> right = mergeSort(arr.slice(mid, len))</span><br><span class="line"></span><br><span class="line">  <span class="keyword">return</span> mergeArr(left, right)</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>]]></content>
+      <categories>
+        <category>前端算法</category>
+      </categories>
+      <tags>
+        <tag>刷题</tag>
+        <tag>算法</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>前端算法-递归与回溯</title>
+    <url>/2022/01/07/%E5%89%8D%E7%AB%AF%E7%AE%97%E6%B3%95-%E9%80%92%E5%BD%92%E4%B8%8E%E5%9B%9E%E6%BA%AF/</url>
+    <content><![CDATA[<h2 id="递归"><a href="#递归" class="headerlink" title="递归"></a>递归</h2><h3 id="1、全排列问题"><a href="#1、全排列问题" class="headerlink" title="1、全排列问题"></a>1、全排列问题</h3><p><strong>题目描述：</strong>给定一个没有重复数字的序列，返回其所有可能的全排列。<br><strong>示例：</strong><br>输入: [1,2,3]<br>输出: [<br>[1,2,3],<br>[1,3,2],<br>[2,1,3],<br>[2,3,1],<br>[3,1,2],<br>[3,2,1]<br>]</p>
+<figure class="highlight js"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">permute</span>(<span class="params">nums</span>)</span>&#123;</span><br><span class="line">  <span class="keyword">const</span> len = nums.length</span><br><span class="line">  <span class="comment">//结果数组</span></span><br><span class="line">  <span class="keyword">const</span> res = []</span><br><span class="line">  <span class="keyword">const</span> visited = &#123;&#125;</span><br><span class="line">  <span class="keyword">const</span> curArr = []</span><br><span class="line"></span><br><span class="line">  <span class="keyword">const</span> dfs = <span class="function">(<span class="params">index</span>)=&gt;</span>&#123;</span><br><span class="line">    <span class="keyword">if</span>(index === len)&#123;</span><br><span class="line">      res.push(curArr.slice())</span><br><span class="line">      <span class="keyword">return</span></span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">for</span>(<span class="keyword">let</span> i=<span class="number">0</span>; i&lt;len; i++)&#123;</span><br><span class="line">      <span class="keyword">if</span>(!visited[nums[i]])&#123;</span><br><span class="line">        curArr.push(nums[i])</span><br><span class="line">        visited[nums[i]] = <span class="number">1</span></span><br><span class="line">        dfs(index+<span class="number">1</span>)</span><br><span class="line">        curArr.pop()</span><br><span class="line">        visited[nums[i]] = <span class="number">0</span></span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">  dfs(<span class="number">0</span>)</span><br><span class="line">  <span class="keyword">return</span> res</span><br><span class="line">&#125;</span><br><span class="line"><span class="built_in">console</span>.log(permute([<span class="number">1</span>,<span class="number">2</span>,<span class="number">3</span>,<span class="number">4</span>]));</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+<p><strong>解题思路：</strong> <a href="https://leetcode-cn.com/problems/permutations/78.">全排列-力扣</a></p>
+<h3 id="2、组合问题"><a href="#2、组合问题" class="headerlink" title="2、组合问题"></a>2、组合问题</h3><p><strong>题目描述：</strong>给定一组不含重复元素的整数数组 nums，返回该数组所有可能的子集（幂集）。<br><strong>说明：</strong>解集不能包含重复的子集。<br><strong>示例:</strong><br>输入: nums = [1,2,3]<br>输出:<br>[<br>[3],<br>[1],<br>[2],<br>[1,2,3],<br>[1,3],<br>[2,3],<br>[1,2],<br>[]<br>]</p>
+<figure class="highlight js"><table><tr><td class="code"><pre><span class="line"><span class="keyword">const</span> subsets = <span class="function"><span class="keyword">function</span>(<span class="params">nums</span>) </span>&#123;</span><br><span class="line">    <span class="comment">// 初始化结果数组</span></span><br><span class="line">    <span class="keyword">const</span> res = []   </span><br><span class="line">    <span class="comment">// 缓存数组长度</span></span><br><span class="line">    <span class="keyword">const</span> len = nums.length</span><br><span class="line">    <span class="comment">// 初始化组合数组</span></span><br><span class="line">    <span class="keyword">const</span> subset = []</span><br><span class="line">    <span class="comment">// 进入 dfs</span></span><br><span class="line">    dfs(<span class="number">0</span>)  </span><br><span class="line"></span><br><span class="line">    <span class="comment">// 定义 dfs 函数，入参是 nums 中的数字索引</span></span><br><span class="line">    <span class="function"><span class="keyword">function</span> <span class="title">dfs</span>(<span class="params">index</span>) </span>&#123;</span><br><span class="line">        <span class="comment">// 每次进入，都意味着组合内容更新了一次，故直接推入结果数组</span></span><br><span class="line">        res.push(subset.slice())</span><br><span class="line">        <span class="comment">// 从当前数字的索引开始，遍历 nums</span></span><br><span class="line">        <span class="keyword">for</span>(<span class="keyword">let</span> i=index;i&lt;len;i++) &#123;</span><br><span class="line">            <span class="comment">// 这是当前数字存在于组合中的情况</span></span><br><span class="line">            subset.push(nums[i]) </span><br><span class="line">            <span class="comment">// 基于当前数字存在于组合中的情况，进一步 dfs</span></span><br><span class="line">            dfs(i+<span class="number">1</span>)</span><br><span class="line">            <span class="comment">// 这是当前数字不存在与组合中的情况</span></span><br><span class="line">            subset.pop()</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">// 返回结果数组</span></span><br><span class="line">    <span class="keyword">return</span> res </span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>]]></content>
+      <categories>
+        <category>前端算法</category>
+      </categories>
+      <tags>
+        <tag>刷题</tag>
+        <tag>算法</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>前端算法-链表、栈、队列</title>
+    <url>/2021/12/31/%E5%89%8D%E7%AB%AF%E7%AE%97%E6%B3%95-%E9%93%BE%E8%A1%A8%E3%80%81%E6%A0%88%E3%80%81%E9%98%9F%E5%88%97/</url>
+    <content><![CDATA[<h2 id="链表题"><a href="#链表题" class="headerlink" title="链表题"></a>链表题</h2><h3 id="1、反转链表"><a href="#1、反转链表" class="headerlink" title="1、反转链表"></a>1、反转链表</h3><p><strong>题目描述</strong>：定义一个函数，输入一个链表的头结点，反转该链表并输出反转后链表的头结点。<br><strong>示例：</strong><br>输入: 1-&gt;2-&gt;3-&gt;4-&gt;5-&gt;NULL<br>输出: 5-&gt;4-&gt;3-&gt;2-&gt;1-&gt;NULL</p>
+<figure class="highlight js"><table><tr><td class="code"><pre><span class="line"><span class="keyword">let</span> list = &#123;</span><br><span class="line">  <span class="attr">val</span>:<span class="number">1</span>,</span><br><span class="line">  <span class="attr">next</span>:&#123;</span><br><span class="line">    <span class="attr">val</span>:<span class="number">2</span>,</span><br><span class="line">    <span class="attr">next</span>:&#123;</span><br><span class="line">      <span class="attr">val</span>:<span class="number">3</span>,</span><br><span class="line">      <span class="attr">next</span>:&#123;</span><br><span class="line">        <span class="attr">val</span>:<span class="number">4</span>,</span><br><span class="line">        <span class="attr">next</span>:&#123;</span><br><span class="line">          <span class="attr">val</span>:<span class="number">5</span>,</span><br><span class="line">          <span class="attr">next</span>:<span class="literal">null</span></span><br><span class="line">        &#125;</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">reverseList</span>(<span class="params">list</span>)</span>&#123;</span><br><span class="line">  <span class="keyword">let</span> pre = <span class="literal">null</span></span><br><span class="line">  <span class="keyword">let</span> cur = list</span><br><span class="line"></span><br><span class="line">  <span class="keyword">while</span>(cur !== <span class="literal">null</span>)&#123;</span><br><span class="line">    <span class="keyword">let</span> next = cur.next</span><br><span class="line">    cur.next = pre</span><br><span class="line">    pre = cur</span><br><span class="line">    cur = next</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">return</span> pre</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p><strong>思路：</strong>此处主要涉及三个变量，pre前驱节点，cur当前节点，next后继节点，循环链表，每次处理链表的三个节点的关系，保存cur的后继节点，转换cur的指针指向pre，然后pre、cur都前进一步，进行下次循环。</p>
+<h3 id="2、局部反转链表"><a href="#2、局部反转链表" class="headerlink" title="2、局部反转链表"></a>2、局部反转链表</h3><p><strong>题目描述：</strong>反转从位置 m 到 n 的链表。请使用一趟扫描完成反转。<br><strong>说明：</strong>1 ≤ m ≤ n ≤ 链表长度。<br><strong>示例:</strong><br>输入: 1-&gt;2-&gt;3-&gt;4-&gt;5-&gt;NULL, m = 2, n = 4<br>输出: 1-&gt;4-&gt;3-&gt;2-&gt;5-&gt;NULL</p>
+<figure class="highlight js"><table><tr><td class="code"><pre><span class="line"><span class="keyword">let</span> list = &#123;</span><br><span class="line">  <span class="attr">val</span>:<span class="number">1</span>,</span><br><span class="line">  <span class="attr">next</span>:&#123;</span><br><span class="line">    <span class="attr">val</span>:<span class="number">2</span>,</span><br><span class="line">    <span class="attr">next</span>:&#123;</span><br><span class="line">      <span class="attr">val</span>:<span class="number">3</span>,</span><br><span class="line">      <span class="attr">next</span>:&#123;</span><br><span class="line">        <span class="attr">val</span>:<span class="number">4</span>,</span><br><span class="line">        <span class="attr">next</span>:&#123;</span><br><span class="line">          <span class="attr">val</span>:<span class="number">5</span>,</span><br><span class="line">          <span class="attr">next</span>:<span class="literal">null</span></span><br><span class="line">        &#125;</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">reverseList</span>(<span class="params">list,m,n</span>)</span>&#123;</span><br><span class="line">  <span class="keyword">const</span> dummy = &#123;<span class="attr">val</span>:<span class="literal">null</span>,<span class="attr">next</span>:<span class="literal">null</span>&#125;;</span><br><span class="line">  dummy.next = list;</span><br><span class="line">  <span class="keyword">let</span> p = dummy</span><br><span class="line">  <span class="keyword">for</span>(<span class="keyword">let</span> i = <span class="number">0</span>; i&lt;m-<span class="number">1</span>;i++)&#123;</span><br><span class="line">    p = p.next</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">let</span> leftHead = p;</span><br><span class="line">  <span class="keyword">let</span> pre = leftHead.next;</span><br><span class="line">  <span class="keyword">let</span> start = pre;</span><br><span class="line">  <span class="keyword">let</span> cur = pre.next;</span><br><span class="line">  <span class="keyword">for</span>(<span class="keyword">let</span> i=m;i&lt;n;i++)&#123;</span><br><span class="line">    <span class="keyword">let</span> next = cur.next;</span><br><span class="line">    cur.next = pre;</span><br><span class="line">    pre = cur;</span><br><span class="line">    cur = next;</span><br><span class="line">  &#125;</span><br><span class="line">  leftHead.next = pre;</span><br><span class="line">  start.next = cur;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">return</span> dummy.next</span><br><span class="line"></span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+<p><strong>思路：</strong> 整体思路应该是将链表切割成三份，m之前和n之后的部分都不需要进行更改，只需将m-n之间链表进行反转，然后在将三部分进行链接即可，具体处理首先设置一个空节点作为整个链表的前置节点，然后遍历链表找到m所处位置，缓存下来作为left部分，同时缓存中间部分第一个节点即left.next为start，然后从此开始到n结束，继续遍历剩下链表，同时将链表反转，遍历过后，pre节点指向中间部分的最后一个节点，cur指向n之后的第一个节点，所以只需将left.next指向pre节点，将start指向cur即完成本次反转。</p>
+<h3 id="3、环形链表定位问题"><a href="#3、环形链表定位问题" class="headerlink" title="3、环形链表定位问题"></a>3、环形链表定位问题</h3><p><strong>题目描述：</strong>给定一个链表，返回链表开始入环的第一个节点。如果链表无环，则返回null<br><strong>示例:</strong><br>输入: head = [3,2,0,-4]（如下图）<br>输出：tail connects to node index 1<br>解释：链表中有一个环，其尾部连接到第二个结点。<br><img src="https://p1-jj.byteimg.com/tos-cn-i-t2oaga2asx/gold-user-assets/2020/3/29/1712658d244622c4~tplv-t2oaga2asx-watermark.awebp" alt="图片"></p>
+<figure class="highlight js"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">detectCycle</span>(<span class="params">list</span>)</span>&#123;</span><br><span class="line">  <span class="keyword">while</span>(list)&#123;</span><br><span class="line">    <span class="keyword">if</span>(list.flag)&#123;</span><br><span class="line">      <span class="keyword">return</span> list</span><br><span class="line">    &#125;<span class="keyword">else</span>&#123;</span><br><span class="line">      list.flag = <span class="literal">true</span>;</span><br><span class="line">      list = list.next;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">return</span> <span class="literal">null</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p><strong>思路：</strong>整体思路不难理解，环形链表的解题思路统一采用标记法，即遍历链表，给每一个链表节点打上标记flag，如果遍历过程中发现节点flag为true。即代表当前节点为被环形链表的节点，又因其第一个被循环到，所以一定是环形节点的第一个节点。</p>
+<h2 id="栈问题"><a href="#栈问题" class="headerlink" title="栈问题"></a>栈问题</h2><h3 id="4、有效括号问题"><a href="#4、有效括号问题" class="headerlink" title="4、有效括号问题"></a>4、有效括号问题</h3><p><strong>题目描述：</strong> 给定一个只包括 ‘(‘，’)’，’{‘，’}’，’[‘，’]’ 的字符串，判断字符串是否有效。<br><strong>有效字符串需满足：</strong><br>左括号必须用相同类型的右括号闭合。<br>左括号必须以正确的顺序闭合。<br>注意空字符串可被认为是有效字符串。<br><strong>示例：</strong><br>输入：’()’<br>输出：true</p>
+<p>输入：’(]’<br>输出：false</p>
+<figure class="highlight js"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">isValid</span>(<span class="params">str</span>)</span>&#123;</span><br><span class="line">  <span class="keyword">const</span> leftRightMap = &#123;</span><br><span class="line">    <span class="string">&#x27;[&#x27;</span>:<span class="string">&#x27;]&#x27;</span>,</span><br><span class="line">    <span class="string">&#x27;&#123;&#x27;</span>:<span class="string">&#x27;&#125;&#x27;</span>,</span><br><span class="line">    <span class="string">&#x27;(&#x27;</span>:<span class="string">&#x27;)&#x27;</span></span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">if</span>(!str || str.length &lt;= <span class="number">1</span>)&#123;</span><br><span class="line">    <span class="keyword">return</span> <span class="literal">false</span></span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">const</span> stack = [];</span><br><span class="line">  </span><br><span class="line">  <span class="keyword">for</span>(<span class="keyword">let</span> i=<span class="number">0</span>; i&lt;str.length;i++)&#123;</span><br><span class="line">    <span class="keyword">if</span>(str[i]===<span class="string">&#x27;(&#x27;</span>||str[i]===<span class="string">&#x27;[&#x27;</span>||str[i]===<span class="string">&#x27;&#123;&#x27;</span>)&#123;</span><br><span class="line">      stack.push(leftRightMap[str[i]])</span><br><span class="line">    &#125;<span class="keyword">else</span>&#123;</span><br><span class="line">      <span class="keyword">if</span>(!stack.length || stack.pop()!==str[i])&#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="literal">false</span></span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">return</span> !stack.length</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="built_in">console</span>.log(isValid(<span class="string">&#x27;[&#123;()&#123;&#125;&#125;]&#x27;</span>))</span><br></pre></td></tr></table></figure>
+
+<p><strong>思路：</strong>第一眼看上去有点像回文串，但是仔细一看并不是，左右括号并不相等，具体看，括号限制的很死只有(){}[]这三种，所以必定是从中间切割，左右相互照应，因此先创建一个左右之间的映射关系leftRightMap，同时采用栈的思想，先进后出，循环整个字符串，采用另一个stack数组来存放与之对应的字符，如果是{[(这三种，就向stack中push一个对应字符，如果是}])这三种，就在stack中的尾部判断是否字符一致，如果一致，则消除这两个，如果不一致，则返回失败，最后，如果循环结束stack中还存在值，则表示false，否则相反。</p>
+<h3 id="5、每日温度问题"><a href="#5、每日温度问题" class="headerlink" title="5、每日温度问题"></a>5、每日温度问题</h3><p><strong>题目描述：</strong> 根据每日气温列表，请重新生成一个列表，对应位置的输出是需要再等待多久温度才会升高超过该日的天数。如果之后都不会升高，请在该位置用 0 来代替。<br><strong>示例：</strong>给定一个列表 temperatures = [73, 74, 75, 71, 69, 72, 76, 73]，你的输出应该是 [1, 1, 4, 2, 1, 1, 0, 0]。<br><strong>提示：</strong>气温 列表长度的范围是 [1, 30000]。每个气温的值的均为华氏度，都是在 [30, 100] 范围内的整数。</p>
+<figure class="highlight js"><table><tr><td class="code"><pre><span class="line"><span class="keyword">const</span> temArr = [<span class="number">73</span>,<span class="number">74</span>,<span class="number">75</span>,<span class="number">71</span>,<span class="number">69</span>,<span class="number">72</span>,<span class="number">76</span>,<span class="number">73</span>]</span><br><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">handleTemper</span>(<span class="params">temArr</span>)</span>&#123;</span><br><span class="line">  <span class="keyword">const</span> len = temArr.length</span><br><span class="line">  <span class="keyword">const</span> res = (<span class="keyword">new</span> <span class="built_in">Array</span>(len)).fill(<span class="number">0</span>) </span><br><span class="line">  <span class="keyword">const</span> stack = []</span><br><span class="line"></span><br><span class="line">  <span class="keyword">for</span>(<span class="keyword">let</span> i=<span class="number">0</span>;i&lt;len;i++)&#123;</span><br><span class="line">    <span class="keyword">while</span>(stack.length &amp;&amp; temArr[i]&gt;temArr[stack[stack.length-<span class="number">1</span>]])&#123;</span><br><span class="line">      <span class="keyword">const</span> top = stack.pop();</span><br><span class="line">      res[top] = i - top;</span><br><span class="line">    &#125;</span><br><span class="line">    stack.push(i)</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">return</span> res</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="built_in">console</span>.log(handleTemper(temArr));</span><br></pre></td></tr></table></figure>
+<p><strong>解题思路：</strong>这个题目刚开始读起来有点难理解，理解后第一个想法应该是双重for循环即可解答，不过一般双重循环都是不合适的，所以需要另一种方法来解。同样采用栈的思想，循环数组，用一个栈stack来维护一个<strong>单调递减</strong>值的数组下标，当值循环到一个值打破了递减规律的时候，只需要去循环一下栈数组，求当前值的下标与stack数组存储下标的差值，即为天数。思路有点饶，感觉有点难想到。</p>
+<h3 id="6、最小栈问题"><a href="#6、最小栈问题" class="headerlink" title="6、最小栈问题"></a>6、最小栈问题</h3><p><strong>题目描述：</strong>设计一个支持 push ，pop ，top 操作，并能在常数时间内检索到最小元素的栈。<br>pop() —— 删除栈顶的元素。<br>top() —— 获取栈顶元素。<br>getMin() —— 检索栈中的最小元素。<br><strong>示例：</strong><br>MinStack minStack = new MinStack();<br>minStack.push(-2);<br>minStack.push(0);<br>minStack.push(-3);<br>minStack.getMin(); –&gt; 返回 -3.<br>minStack.pop();<br>minStack.top(); –&gt; 返回 0.<br>minStack.getMin(); –&gt; 返回 -2.</p>
+<figure class="highlight js"><table><tr><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">MinStack</span> </span>&#123;</span><br><span class="line">  <span class="function"><span class="title">constructor</span>(<span class="params"></span>)</span>&#123;</span><br><span class="line">     <span class="built_in">this</span>.stack= []</span><br><span class="line">     <span class="built_in">this</span>.minStack = []</span><br><span class="line">  &#125;</span><br><span class="line"> </span><br><span class="line">  <span class="function"><span class="title">push</span>(<span class="params">p</span>)</span> &#123;</span><br><span class="line">    <span class="built_in">this</span>.stack.push(p)</span><br><span class="line">    <span class="keyword">if</span>(<span class="built_in">this</span>.minStack.length===<span class="number">0</span> || <span class="built_in">this</span>.minStack[<span class="built_in">this</span>.minStack.length-<span class="number">1</span>] &gt;= p)&#123;</span><br><span class="line">      <span class="built_in">this</span>.minStack.push(p)</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="title">pop</span>(<span class="params"></span>)</span>&#123;</span><br><span class="line">    <span class="keyword">if</span>(<span class="built_in">this</span>.stack.pop() ===<span class="built_in">this</span>.minStack[<span class="built_in">this</span>.minStack.length-<span class="number">1</span>])&#123;</span><br><span class="line">      <span class="built_in">this</span>.minStack.pop()</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="title">top</span>(<span class="params"></span>)</span>&#123;</span><br><span class="line">    <span class="keyword">return</span> <span class="built_in">this</span>.stack[<span class="built_in">this</span>.stack.length-<span class="number">1</span>]</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="title">getMin</span>(<span class="params"></span>)</span>&#123;</span><br><span class="line">    <span class="keyword">return</span> <span class="built_in">this</span>.minStack[<span class="built_in">this</span>.minStack.length-<span class="number">1</span>]</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p><strong>解题思路：</strong>这个题其实不难理解，push、pop都可以用数组原生方法实现，getMin最差也可以通过循环得到，时间复杂度是O(n)，以上时间复杂度是O1，增加了一个minStack用来存储一个<strong>单调递减</strong>的队列，每次只需要返回队列栈顶即可。</p>
+<h2 id="队列问题"><a href="#队列问题" class="headerlink" title="队列问题"></a>队列问题</h2><h3 id="7、滑动窗口问题"><a href="#7、滑动窗口问题" class="headerlink" title="7、滑动窗口问题"></a>7、滑动窗口问题</h3><p><strong>题目描述：</strong>给定一个数组 nums 和滑动窗口的大小 k，请找出所有滑动窗口里的最大值。<br><strong>示例：</strong><br>输入: nums = [1,3,-1,-3,5,3,6,7], 和 k = 3<br>输出: [3,3,5,5,6,7]<br>解释: 滑动窗口的位置<br>[1 3 -1] -3 5 3 6 7<br>1 [3 -1 -3] 5 3 6 7<br>1 3 [-1 -3 5] 3 6 7<br>1 3 -1 [-3 5 3] 6 7<br>1 3 -1 -3 [5 3 6] 7<br>1 3 -1 -3 5 [3 6 7]</p>
+<p>最大值分别对应：3 3 5 5 6 7<br><strong>提示：</strong>你可以假设 k 总是有效的，在输入数组不为空的情况下，1 ≤ k ≤ 输入数组的大小。</p>
+<figure class="highlight js"><table><tr><td class="code"><pre><span class="line"><span class="keyword">const</span> nums = [<span class="number">1</span>,<span class="number">3</span>,-<span class="number">1</span>,-<span class="number">3</span>,<span class="number">5</span>,<span class="number">3</span>,<span class="number">6</span>,<span class="number">7</span>]</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">findMax</span>(<span class="params">nums,k</span>)</span>&#123;</span><br><span class="line">  <span class="keyword">if</span>(!nums||!k)&#123;</span><br><span class="line">    <span class="keyword">return</span> []</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">if</span>(nums.length &lt;= k)&#123;</span><br><span class="line">    <span class="keyword">const</span> list = nums.sort(<span class="function">(<span class="params">a,b</span>)=&gt;</span>a-b)</span><br><span class="line">    <span class="keyword">return</span> [list[list.length-<span class="number">1</span>]]</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">const</span> res = []</span><br><span class="line">  <span class="keyword">for</span>(<span class="keyword">let</span> i = <span class="number">0</span>;i&lt;nums.length;i++)&#123;</span><br><span class="line">    <span class="keyword">let</span> max = nums[i]</span><br><span class="line">    <span class="keyword">let</span> m = i</span><br><span class="line">    <span class="keyword">while</span>(m  &lt;= k-<span class="number">1</span>+i)&#123;</span><br><span class="line">      <span class="keyword">if</span>(nums[m]&gt;max)&#123;</span><br><span class="line">        max=nums[m]   </span><br><span class="line">      &#125;</span><br><span class="line">      m++</span><br><span class="line">    &#125;</span><br><span class="line">    res.push(max)</span><br><span class="line">    <span class="keyword">if</span>(m &gt; nums.length-<span class="number">1</span>)&#123;</span><br><span class="line">      <span class="keyword">return</span> res</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"><span class="built_in">console</span>.log(findMax(nums,<span class="number">3</span>));</span><br></pre></td></tr></table></figure>]]></content>
+      <categories>
+        <category>前端算法</category>
+      </categories>
+      <tags>
+        <tag>刷题</tag>
+        <tag>算法</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>聊一聊AST</title>
+    <url>/2021/12/30/%E8%81%8A%E4%B8%80%E8%81%8AAST/</url>
+    <content><![CDATA[<p>前端技术发展日新月异，各种技术框架让人烟花缭乱，大多数时间我们只需要关注业务，如何使用是我们的主要任务，但是如果我们深入学习，就会发现永远绕不开一个专业名词抽象语法树（Abstract Syntax Tree），简称AST，那么我们今天就来盘一盘它。</p>
+<p><img src="https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/4fa71b59d1594e1b8910a6e3bd56cba3~tplv-k3u1fbpfcp-zoom-1.image"></p>
+<h2 id="一、AST何许东西也"><a href="#一、AST何许东西也" class="headerlink" title="一、AST何许东西也"></a>一、AST何许东西也</h2><blockquote>
+<p>在计算机科学中，抽象语法树，或简称<strong>语法树</strong>（Syntax tree），是源代码 语法结构的一种抽象表示。它以树状的形式表现编程语言的语法结构，树上的每个节点都表示源代码中的一种结构。  —-维基百科</p>
+</blockquote>
+<p>根据以上我们可以看到AST其实就是计算机语言语法结构的描述，那也就是说你所熟知的语言JavaScript、Java、python、Html甚至Css都需要到AST这里走一遭，所以足以看出AST的重要性。讲这么多只是让大家对AST的重要性有个足够的认识，那它具体是什么东西我们还需要来看一哈。</p>
+<p>AST其实是对我们来讲只是一个对象，它无关乎语法结构，不会记录源语言真实语法中的每个细节（比如省略分隔符），这也是名字中抽象一词的由来，与之相对应的其实还有另一种树，具<br>象语法树（Concret Syntax Tree），简称CST，它有代码直接翻译解析而来，因而保留了原语法的所有信息，也被称之为解析树。</p>
+<p>为什么要去解析源代码成一个通用对象呢？各种语言语法种类繁多，但是计算机是无法识别我们写的代码的，所以就需要一种通用的数据结构来描述，那AST其实就是那个东西。同时，因为AST是真实存在且存在一定逻辑的，那我们也就可以在AST上做点文章，搞点花活：）</p>
+<h2 id="二、AST如何产生"><a href="#二、AST如何产生" class="headerlink" title="二、AST如何产生"></a>二、AST如何产生</h2><p>我们来了解一下Javascript解析流程，先整个图see see：</p>
+<p><img src="https://p1-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/07599d6153cd440cb0a4b55b3937e15b~tplv-k3u1fbpfcp-watermark.image" alt="0686CD87-5BCA-4C32-855D-08200500EA7E.png"></p>
+<p>首先 ’张三’ 在运用毕生所学在vscode中写了以下代码</p>
+<figure class="highlight js"><table><tr><td class="code"><pre><span class="line"><span class="keyword">const</span> name = <span class="string">&#x27;张三&#x27;</span>;</span><br><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">getTitle</span>(<span class="params"></span>)</span>&#123;</span><br><span class="line">  <span class="keyword">return</span> <span class="string">&#x27;法外狂徒&#x27;</span> ;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+<p>这时候为了弄明白张三表达的是什么思想，就需要通过解析器（parse）对这行代码进行解析。parse分两步进行。</p>
+<p><strong>词法分析</strong>：词法解析是一个将字符流(char stream)转换成记号流(token stream)的过程，会将code中每个词都拆分开来，比如const name = ‘张三’  就会被拆分成const、name、=、’张三‘，大家可以通过这个网站<a href="https://esprima.org/demo/parse.html#">Esprima: Parser</a>具体看一下。</p>
+<p><strong>语法分析</strong>：通过词法分析我们拿到了token流，接下来我们就可以通过对token进行语法分析生成AST，比如const是一个声明参数，就会被标记为Declaration，以此类推，逐步转换成一棵AST。AST可以通过<a href="https://astexplorer.net/">AST explorer</a>这个网站在线查看。</p>
+<p><img src="https://p9-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/5b54e506c605497c8fe659f4932c4ac8~tplv-k3u1fbpfcp-watermark.image" alt="7CE80182-C358-49AA-86ED-FEB0579A8225.png"></p>
+<p>这里提到了解析器parse的概念，解析器就是用来解析源码到AST的工具，许多的解析器比如babel parser、eslint parser、typescript parser等，他们都基于estree标准，只不过是另外做了扩展，随后acorn出现，解析速度更快，同时支持插件扩展，所以各家就开始基于acorn进行重构。所以现在babel、eslint都可以通过编写插件进行自定义扩展。</p>
+<h2 id="三、AST结构"><a href="#三、AST结构" class="headerlink" title="三、AST结构"></a>三、AST结构</h2><p>知道了AST的解析过程，我们来具体看一下AST的结构，以 babel解析为例：</p>
+<p><img src="https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/e59535a15f6f43529be11aec2bcbaca1~tplv-k3u1fbpfcp-watermark.image" alt="04C0F7A6-3456-4BDE-BCED-513A492FC329.png"></p>
+<p>这是一个const name = ‘张三’ 的AST结构，从上面可以看到整个对象包裹在Program中，Program表示整个程序的节点，它有一个body参数用来存放程序子内容主要看一下body中的内容</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">VariableDeclaration: 声明语句类型，还有FunctionDeclaration、ExpressionStatement等等。</span><br><span class="line">start、end：表示当前内容在整个文档流中存在的位置。</span><br><span class="line">loc：展示当前内容所在行号和列号</span><br><span class="line">range：表示位置，同上</span><br><span class="line">leadingComments：注释列表，注释信息会展示在这里</span><br><span class="line">declarations：声明语句特有的展示声明信息的参数，</span><br><span class="line">kind：声明类型</span><br><span class="line">......</span><br></pre></td></tr></table></figure>
+
+<p>AST既然是对源码的抽象，那么源码中包含标识符、字面量、表达式、语句等，对应AST就都会有相应的映射，比如标识符—&gt;Identifier、字面量—&gt;Literal等等，具体的可以通过上面的网站去看看。</p>
+<h2 id="四、AST有何用"><a href="#四、AST有何用" class="headerlink" title="四、AST有何用"></a>四、AST有何用</h2><p>要问AST有何用？你一定天天都在用，比如Eslint，比如Babel，再比如Typescript，Eslint中集成了大量的插件用于规范化代码，这些插件就是通过对AST进行修改实现的各种功能。OK，那如何修改AST呢。拿捏。</p>
+<p>来人，放图</p>
+<p><img src="https://p1-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/81492fe1e7964d149ab06c4dab74bb8d~tplv-k3u1fbpfcp-watermark.image" alt="44ABEDF4-7E73-4445-B34F-0EE1C44530E3.png"></p>
+<p>没错，还是这张图，只不过我们现在来关注中间的部分，transform很亮眼，这就是我们修改AST的地方，也是各种Eslint、babel插件搞活的地方。既然源码能够解析成AST，那么AST同样也就能生成源码，所以我们在AST上按着规范进行修改，那么一定就能拿到预期的效果，至于如何修改本次就不做具体阐述了，如果有兴趣后面我可以写写Eslint和Babel插件的编写。</p>
+<h2 id="五、总结一下"><a href="#五、总结一下" class="headerlink" title="五、总结一下"></a>五、总结一下</h2><p>AST非常重要，是我们走向原理的必经之路，不是很难，但是各种定义比较多，多看多查就能了解，了解以及学会使用AST后，就会发现很多正在使用的工具原理就显而易见了，甚至我们也可以自己编写插件，甚至解析器，祝大家学的愉快~</p>
+<p>等一下，我还有最后一句话</p>
+<blockquote>
+<p>Time is fair, because it gives everyone 24 hours.</p>
+</blockquote>
+]]></content>
+      <categories>
+        <category>技术文章</category>
+      </categories>
+      <tags>
+        <tag>Javascript</tag>
+        <tag>AST</tag>
+        <tag>前端</tag>
+        <tag>基础</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>面试题库</title>
+    <url>/2022/01/21/%E9%9D%A2%E8%AF%95%E9%A2%98%E5%BA%93/</url>
+    <content><![CDATA[<h1 id="面试题库"><a href="#面试题库" class="headerlink" title="面试题库"></a>面试题库</h1><h2 id="前端基础"><a href="#前端基础" class="headerlink" title="前端基础"></a>前端基础</h2><h3 id="1、常见状态码"><a href="#1、常见状态码" class="headerlink" title="1、常见状态码"></a>1、常见状态码</h3><ul>
+<li>2XX Success(成功状态码)</li>
+<li>200 表示从客户端发来的请求在服务器端被正常处理</li>
+<li>204 该状态码表示服务器接收的请求已成功处理，但在返回的响应报文中不含实体的主体部分</li>
+<li>206 该状态码表示客户端进行了范围请求，而服务器成功执行了这部分的GET请求</li>
+<li>3XX Redirection(重定向状态码)</li>
+<li>301 永久性重定向</li>
+<li>302 临时性重定向</li>
+<li>4XX Client Error(客户端错误状态码)</li>
+<li>400 该状态码表示请求报文中存在语法错误</li>
+<li>401 该状态码表示发送的请求需要有通过HTTP认证的认证信息</li>
+<li>403 该状态码表明对请求资源的访问被服务器拒绝了。</li>
+<li>404 该状态码表明服务器上无法找到请求的资源</li>
+<li>5XX Server Error(服务器错误状态码)</li>
+<li>500 该状态码表明服务器端在执行请求时发生了错误。</li>
+<li>503 该状态码表明服务器暂时处于超负载或正在进行停机维护，现在无法处理请求。</li>
+</ul>
+<h3 id="2、浏览器缓存策略"><a href="#2、浏览器缓存策略" class="headerlink" title="2、浏览器缓存策略"></a>2、浏览器缓存策略</h3><ul>
+<li>强制缓存策略<ul>
+<li>Expires</li>
+<li>Cache-Control</li>
+</ul>
+</li>
+<li>协商缓存<ul>
+<li>启用协商缓存策略的标准是：Cache-control设置为no-cache或者max-age与Expires都过期的情况下</li>
+<li>Etag / If-None-Match的优先级比Last-Modified / If-Modified-Since高</li>
+<li>Last-Modified/ If-Modified-Since<br>Last-Modified是服务器相应请求时，返回该资源文件在服务器最后被修改的时间。<br>If-Modified-Since则是客户端再次发起该请求时，携带上次请求返回的Last-Modified值，通过此字段值告诉服务器该资源上次请求返回的最后被修改时间。服务器收到请求，发现请求头含有If-Modified-Since字段，则会根据If-Modified-Since的字段值与该资源在服务器的最后修改时间做对比，若服务器的资源最后被修改时间大于If-Modified-Since的字段值，则重新返回资源，状态码为200；否则则返回304，代表资源无更新，可继续使用文件。</li>
+<li>Etag / If-None-Match</li>
+</ul>
+</li>
+</ul>
+<p>Etag是服务器响应请求时，返回当前资源文件的一个唯一标识（由服务器生成），如下。<br>If-None-Match是客户端再次发起该请求时，携带上次请求返回的唯一标识Etag值，通过此字段值告诉服务器该资源上次请求返回的唯一标识值。服务器收到该请求后，发现该请求头中含有If-None-Match,则会根据If-None_match的字段值与该资源在服务器的Etag值做对比，一致则返回304，代表资源无更新，继续使用缓存文件；不一致则重新返回资源文件，状态码为200。</p>
+<h3 id="3、怎么理解并行加载与串行执行"><a href="#3、怎么理解并行加载与串行执行" class="headerlink" title="3、怎么理解并行加载与串行执行"></a>3、怎么理解并行加载与串行执行</h3><script>运行脚本或加载外部文件时，会阻塞页面渲染，阻塞其他资源的加载。如果页面中需要加载多个js文件，在古老浏览器中性能会比较糟糕。 因此有了最原始的优化原则： 把脚本放在底部。
+HTML5 async 非阻塞，加载完后立即执行，不保证顺序；
+
+### 4、从输入url到页面展示的过程中都发生了什么？
+* DNS解析
+* 发起TCP连接
+* 发送HTTP请求
+* 服务器处理请求并返回HTTP报文
+* 浏览器解析渲染页面
+* 连接结束。
+
+拓展 
+**1   、回流、重绘**
+会导致回流的操作：
+* 页面首次渲染
+* 浏览器窗口大小发生改变
+* 元素尺寸或位置发生改变
+* 元素内容变化（文字数量或图片大小等等）
+* 元素字体大小变化
+* 添加或者删除可见的DOM元素
+* 激活CSS伪类（例如：:hover）
+* 查询某些属性或调用某些方法
+
+重绘：当页面中元素样式的改变并不影响它在文档流中的位置时（例如：color、background-color、visibility等），浏览器会将新样式赋予给元素并重新绘制它，这个过程称为重绘。
+
+**2、http请求包结构**
+一个HTTP请求报文由四个部分组成：请求行、请求头部、空行、请求数据。
+* 请求行：由请求方法字段、URL字段和HTTP协议版本字段3个字段组成，它们用空格分隔。
+* 请求头：HTTP客户程序(例如浏览器)，向服务器发送请求的时候必须指明请求类型(一般是GET或者 POST)。如有必要，客户程序还可以选择发送其他的请求头。大多数请求头并不是必需的，但Content-Length除外。对于POST请求来说 Content-Length必须出现。
+* 空行：它的作用是通过一个空行，告诉服务器请求头部到此为止。
+* 请求数据：若方法字段是GET，则此项为空，没有数据，若方法字段是POST,则通常来说此处放置的就是要提交的数据
+
+**CDN原理**
+CDN是将源站内容分发至全国所有的节点，从而缩短用户查看对象的延迟，提高用户访问网站的响应速度与网站的可用性的技术。它能够有效解决网络带宽小、用户访问量大、网点分布不均等问题。
+
+### 5、cookies、sessionStorage和localStorage之间区别？
+
+
+## 一、CSS相关
+### 1、margin 塌陷问题？
+外边距合并就是，当两个垂直外边距相遇时，它们将形成一个外边距。合并的外边距的高度等于两个发生合并的外边距的高度中的较大者。
+
+几种情况：兄弟关系、父子关系、空元素
+
+解决办法：1、改变其中一个边距到合适距离
+            2、BFC
+
+### 2、  两种以上方式实现已知或者未知宽度的垂直水平居中？
+<figure class="highlight css"><table><tr><td class="code"><pre><span class="line">// <span class="number">1</span></span><br><span class="line"><span class="selector-class">.wraper</span> &#123;</span><br><span class="line">  <span class="attribute">position</span>: relative;</span><br><span class="line">  <span class="selector-class">.box</span> &#123;</span><br><span class="line">    <span class="attribute">position</span>: absolute;</span><br><span class="line">    <span class="attribute">top</span>: <span class="number">50%</span>;</span><br><span class="line">    <span class="attribute">left</span>: <span class="number">50%</span>;</span><br><span class="line">    <span class="attribute">width</span>: <span class="number">100px</span>;</span><br><span class="line">    <span class="attribute">height</span>: <span class="number">100px</span>;</span><br><span class="line">    <span class="attribute">margin</span>: -<span class="number">50px</span> <span class="number">0</span> <span class="number">0</span> -<span class="number">50px</span>;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">// <span class="number">2</span></span><br><span class="line"><span class="selector-class">.wraper</span> &#123;</span><br><span class="line">  <span class="attribute">position</span>: relative;</span><br><span class="line">  <span class="selector-class">.box</span> &#123;</span><br><span class="line">    <span class="attribute">position</span>: absolute;</span><br><span class="line">    <span class="attribute">top</span>: <span class="number">50%</span>;</span><br><span class="line">    <span class="attribute">left</span>: <span class="number">50%</span>;</span><br><span class="line">    <span class="attribute">transform</span>: <span class="built_in">translate</span>(-<span class="number">50%</span>, -<span class="number">50%</span>);</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">// <span class="number">3</span></span><br><span class="line"><span class="selector-class">.wraper</span> &#123;</span><br><span class="line">  <span class="selector-class">.box</span> &#123;</span><br><span class="line">    <span class="attribute">display</span>: flex;</span><br><span class="line">    <span class="attribute">justify-content</span>:center;</span><br><span class="line">    <span class="attribute">align-items</span>: center;</span><br><span class="line">    <span class="attribute">height</span>: <span class="number">100px</span>;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">// <span class="number">4</span></span><br><span class="line"><span class="selector-class">.wraper</span> &#123;</span><br><span class="line">  <span class="attribute">display</span>: table;</span><br><span class="line">  <span class="selector-class">.box</span> &#123;</span><br><span class="line">    <span class="attribute">display</span>: table-cell;</span><br><span class="line">    <span class="attribute">vertical-align</span>: middle;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+### 3、盒模型
+
+### 4、什么是BFC
+一个**块格式化上下文（block formatting context）**是Web页面的可视化CSS渲染的一部分。它是块盒子的布局发生，浮动互相交互的区域。
+
+触发BFC方式：
+* body 根元素
+* 浮动元素：float 除 none 以外的值
+ * 绝对定位元素：position (absolute、fixed)
+* display 为 inline-block、table-cells、flex
+* overflow 除了 visible 以外的值 (hidden、auto、scroll)
+
+
+## 二、JS相关
+### 说说var、let、const之间的区别
+变量提升，暂时性死区
+
+**引述** 闭包
+
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">for(let i =0;i&lt;10;i++)&#123;</span><br><span class="line">	setTimeout(()=&gt;&#123;</span><br><span class="line">	  console.log(i)</span><br><span class="line">	&#125;,100)</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">闭包解决</span><br><span class="line">for (var i = 0; i &lt; 10; i++) &#123;</span><br><span class="line">  (function(i) &#123;</span><br><span class="line">    setTimeout(() =&gt; &#123;</span><br><span class="line">      console.log(i);</span><br><span class="line">    &#125;, 100);</span><br><span class="line">  &#125;)(i);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+### 1、谈谈__proto__、prototype和constructor之间的关系
+（1）__proto__和constructor是对象所独有的，prototype是函数所独有的，由于js函数也是对象，所有函数也有__proto__和constructor。
+
+<figure class="highlight ts"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">animal</span>(<span class="params"></span>) </span>&#123;&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">const</span> dog = <span class="keyword">new</span> animal();</span><br><span class="line"></span><br><span class="line"><span class="comment">// dog.__proto__ === animal.prototype</span></span><br><span class="line"><span class="comment">// dog.constructor = animal.prototype.constructor</span></span><br></pre></td></tr></table></figure>
+
+
+### 2、new一个新对象的过程，发生了什么？
+(1) 创建一个空对象 son {}
+(2) 为 son 准备原型链连接 son.__proto__ = Father.prototype
+(3) 重新绑定this，使构造函数的this指向新对象 Father.call(this)
+(4) 为新对象属性赋值 son.name
+(5) 返回this return this，此时的新对象就拥有了构造函数的方法和属性了
+
+### 3、阐述event loop
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">1. js主线程它是有一个执行栈的，所有的js代码都会在执行栈里运行</span><br><span class="line"></span><br><span class="line">2. 首先判断是同步任务还是异步任务</span><br><span class="line"></span><br><span class="line">3. 同步任务进入主线程，异步任务(比如setTimeout,ajax,promise.then以及用户点击等操作),异步任务在event table中注册事件，当满足触发条件后（触发条件可能是延时也可能是ajax回调），被推入event queue(任务队列)等待执行。</span><br><span class="line"></span><br><span class="line">4. 而当主线程执行完栈中的所有代码后，它就会检查任务队列是否有任务要执行，如果有任务要执行的话，那么就将该任务放到执行栈中执行。</span><br><span class="line"></span><br><span class="line">5. 如果当前任务队列为空的话，它就会一直循环等待任务到来。</span><br></pre></td></tr></table></figure>
+
+### 4、AST有了解吗？
+
+### 5、js隐式转换
+主要规则是：
+    对象类型： 对象 -> 字符串 -> 数字
+    布尔类型： 布尔 -> 数字
+    关系运算符(> 、<、=)等会将数组两边的先进行转换在比较，规则如上，如果两边都是字符串则是比较Unicode值。
+[image:E295FF38-976A-4B4B-80F7-12DEC751C38F-21246-0000D56B26CD654C/2791152-ba592aa9b81fe174.png]
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">console.log(1+true)</span><br><span class="line">console.log(&#x27;abc&#x27;&gt;&#x27;aad&#x27;) </span><br><span class="line">console.log(&#x27;abc&#x27;&gt;&#x27;b&#x27;)</span><br><span class="line">console.log(&#x27;2&#x27;&gt;10)</span><br><span class="line">console.log(&#x27;2&#x27;&gt;&#x27;10&#x27;)</span><br></pre></td></tr></table></figure>
+
+[image:D6D675AF-08BE-4E7B-AD22-BA2A9E5E0987-21246-0000D5E331911B09/1538025444457ed608b84c4.jpg]
+[image:5C6AB1E2-D7C3-4A82-B626-BDD9BE8A9EFC-21246-0000D5E63D6FEA7E/1538025524680923d1cd05b.jpg]
+
+### 6、commonJS和ES6模块化的区别
+* 语法上面，两者最明显的差异是，CommonJS 模块使用require()和module.exports，ES6 模块使用import和export。
+
+
+## 三、Vue相关
+### 1、 Vue双向绑定原理
+原理是数据劫持
+核心是Object.defineProperty()
+
+### 2、父子组件生命周期执行顺序
+
+### 3、vue模板编译原理
+简单说，Vue的编译过程就是将template转化为render函数的过程。会经历以下阶段
+* 生成AST树
+* 优化
+* codegen
+首先解析模版，生成AST语法树(一种用JavaScript对象的形式来描述整个模板)。 使用大量的正则表达式对模板进行解析，遇到标签、文本的时候都会执行对应的钩子进行相关处理。
+Vue的数据是响应式的，但其实模板中并不是所有的数据都是响应式的。有一些数据首次渲染后就不会再变化，对应的DOM也不会变化。那么优化过程就是深度遍历AST树，按照相关条件对树节点进行标记。这些被标记的节点(静态节点)我们就可以跳过对它们的比对，对运行时的模板起到很大的优化作用。
+编译的最后一步是将优化后的AST树转换为可执行的代码。
+
+### 4、Vue 组件通讯有哪几种方式
+* Props 和$emit 父组件向子组件传递数据是通过 prop 传递的，子组件传递数据给父组件是通过$emit 触发事件来做到的
+* $parent,$children 获取当前组件的父组件和当前组件的子组件
+* $attrs 和$listeners A->B->C。Vue 2.4 开始提供了$attrs 和$listeners 来解决这个问题
+* 父组件中通过 provide 来提供变量，然后在子组件中通过 inject 来注入变量。(官方不推荐在实际业务中使用，但是写组件库时很常用)
+* $refs 获取组件实例
+* envetBus 兄弟组件数据传递 这种情况下可以使用事件总线的方式
+* Vuex 状态管理
+
+### 5、vue异步请求在哪一步发起
+可以在钩子函数 created、beforeMount、mounted 中进行异步请求，因为在这三个钩子函数中，data 已经创建，可以将服务端端返回的数据进行赋值。
+
+如果异步请求不需要依赖 Dom 推荐在 created 钩子函数中调用异步请求，因为在 created 钩子函数中调用异步请求有以下优点：
+* 能更快获取到服务端数据，减少页面 loading 时间；
+* ssr 不支持 beforeMount 、mounted 钩子函数，所以放在 created 中有助于一致性；
+
+### 6、怎样理解 Vue 的单向数据流
+数据总是从父组件传到子组件，子组件没有权利修改父组件传过来的数据，只能请求父组件对原始数据进行修改。这样会防止从子组件意外改变父级组件的状态，从而导致你的应用的数据流向难以理解。
+
+如果实在要改变父组件的 prop 值 可以再 data 里面定义一个变量 并用 prop 的值初始化它 之后用$emit 通知父组件去修改
+
+### 7、v-for 为什么要加 key
+如果不使用 key，Vue 会使用一种最大限度减少动态元素并且尽可能的尝试就地修改/复用相同类型元素的算法。key 是为 Vue 中 vnode 的唯一标记，通过这个 key，我们的 diff 操作可以更准确、更快速
+
+### 8、你都做过哪些 Vue 的性能优化
+* 对象层级不要过深，否则性能就会差
+* 不需要响应式的数据不要放到 data 中（可以用 Object.freeze() 冻结数据）
+* v-if 和 v-show 区分使用场景
+* computed 和 watch 区分使用场景
+* v-for 遍历必须加 key，key 最好是 id 值，且避免同时使用 v-if
+* 大数据列表和表格性能优化-虚拟列表/虚拟表格
+* 防止内部泄漏，组件销毁后把全局变量和事件销毁
+* 图片懒加载
+* 路由懒加载
+* 第三方插件的按需引入
+* 适当采用 keep-alive 缓存组件
+* 防抖、节流运用
+* 服务端渲染 SSR or 预渲染
+
+### 9、nextTick 使用场景和原理
+nextTick 中的回调是在下次 DOM 更新循环结束之后执行的延迟回调。在修改数据之后立即使用这个方法，获取更新后的 DOM。主要思路就是采用微任务优先的方式调用异步方法去执行 nextTick 包装的方法
+
+## 四、React相关
+
+### 1、setState 用法和同步‘异步’特性
+异步setState：
+    1）合成事件（onClick、onChange）中的setState
+    2）生命周期函数中的setState
+同步setState
+    1）原生事件，
+    eg：document.body.addEventListener(‘click’, this.changeValue, false)
+        document.querySelector().onclick
+    2）setTimeout 中
+批量更新
+    1）会（合并批量更新）：合成事件、钩子函数
+    2）不会：原生事件和setTimeout
+
+### 2、Hooks有哪些点需要注意
+
+### 3、react diff原理，与传统diff算法的区别
+1. React 通过制定大胆的 diff 策略，将 O(n3) 复杂度的问题转换成 O(n) 复杂度的问题；
+2. React 通过**分层求异**的策略，对 tree diff 进行算法优化；
+3. React 通过**相同类生成相似树形结构，不同类生成不同树形结构**的策略，对 component diff 进行算法优化；
+4. React 通过**设置唯一 key**的策略，对 element diff 进行算法优化；
+5. 建议，在开发组件时，保持稳定的 DOM 结构会有助于性能的提升；
+6. 建议，在开发过程中，尽量减少类似将最后一个节点移动到列表首部的操作，当节点数量过大或更新操作过于频繁时，在一定程度上会影响 React 的渲染性能。
+
+### 4、为什么不能直接更新state
+直接更新state不会导致渲染
+
+### 5、React类组件中为什么要绑定this？（react合成事件）
+两个方面，fuction需要绑定this，是因为React是事件处理是合成事件，这里面，事件触发后向上冒泡到document，随后在进行分发到对应子节点处理，这中间会涉及到方法传递临时保存，就会触发js的作用域丢失问题。第二个箭头函数不需要绑定是因为箭头函数会默认帮我们绑定外层作用域，也就是继承当前实例作用域，减少我们手动绑定的操作
+
+
+### 6、如何避免组件重新渲染？
+React 中最常见的问题之一是组件不必要地重新渲染。React 提供了两个方法，在这些情况下非常有用：
+* React.memo():这可以防止不必要地重新渲染函数组件
+* PureComponent:这可以防止不必要地重新渲染类组件
+这两种方法都依赖于对传递给组件的props的浅比较，如果 props 没有改变，那么组件将不会重新渲染。虽然这两种工具都非常有用，但是浅比较会带来额外的性能损失，因此如果使用不当，这两种方法都会对性能产生负面影响。
+通过使用 **React Profiler**，可以在使用这些方法前后对性能进行测量，从而确保通过进行给定的更改来实际改进性能。
+
+### 7、useEffect 和useLayoutEffect执行时机
+ useEffect 会**在组件渲染到屏幕之后执行**。
+useLayoutEffect**会在所有的 DOM 变更之后同步调用** effect。可以使用它来读取 DOM 布局并同步触发重渲染。在浏览器执行绘制之前，useLayoutEffect 内部的更新计划将被同步刷新。
+
+useEffect 在渲染时是异步执行，并且要等到浏览器将所有变化渲染到屏幕后才会被执行。
+useLayoutEffect 在渲染时是同步执行，其执行时机与 componentDidMount，componentDidUpdate 一致，
+
+修改dom操作建议放在useLayoutEffect里面
+
+### 8、了解虚拟Dom吗？
+
+拓展 虚拟Dom为什么能优化性能
+
+
+
+
+## 五、移动端
+### 1、1px产生原因及解决办法
+
+**一种是利用 css 中的****transfrom：scaleY(0.5)****，另一种是设置 媒体查询根据不同 DPR 缩放**
+
+### 2、解决iPhone小黑条问题
+
+## 五、编程题
+### 1、给定一个字符串，只允许最多删除一个字符，判断其是否可以成为回文字符串？
+
+<figure class="highlight ts"><table><tr><td class="code"><pre><span class="line"></span><br><span class="line">给定：<span class="string">&#x27;abbgba&#x27;</span></span><br><span class="line"></span><br><span class="line">输出：<span class="literal">true</span> </span><br><span class="line"></span><br><span class="line">解析：</span><br><span class="line"><span class="keyword">const</span> isHui = <span class="function"><span class="params">str</span> =&gt;</span> &#123;</span><br><span class="line">  <span class="keyword">let</span> l = str.length - <span class="number">1</span>;</span><br><span class="line">  <span class="keyword">let</span> i = <span class="number">0</span>;</span><br><span class="line">  <span class="keyword">while</span> (i &lt; l &amp;&amp; str[i] === str[l]) &#123;</span><br><span class="line">    i++;</span><br><span class="line">    l--;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">if</span> (isP(i + <span class="number">1</span>, l)) &#123;</span><br><span class="line">    <span class="keyword">return</span> <span class="literal">true</span>;</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">if</span> (isP(i, l + <span class="number">1</span>)) &#123;</span><br><span class="line">    <span class="keyword">return</span> <span class="literal">true</span>;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="keyword">function</span> <span class="title">isP</span>(<span class="params">st, ed</span>) </span>&#123;</span><br><span class="line">    <span class="keyword">while</span> (st &lt; ed) &#123;</span><br><span class="line">      <span class="keyword">if</span> (str[st] !== str[ed]) &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="literal">false</span>;</span><br><span class="line">      &#125;</span><br><span class="line">      st++;</span><br><span class="line">      ed--;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> <span class="literal">true</span>;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">return</span> <span class="literal">false</span>;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+### 2、给定一数组，将其转换为树形结构
+<figure class="highlight ts"><table><tr><td class="code"><pre><span class="line">给定：</span><br><span class="line"><span class="keyword">let</span> arr = [</span><br><span class="line">	&#123;<span class="attr">id</span>: <span class="number">1</span>, <span class="attr">name</span>: <span class="string">&#x27;张一&#x27;</span>, <span class="attr">pid</span>: <span class="number">0</span>&#125;, </span><br><span class="line">	&#123;<span class="attr">id</span>: <span class="number">2</span>, <span class="attr">name</span>: <span class="string">&#x27;李二&#x27;</span>, <span class="attr">pid</span>: <span class="number">1</span>&#125;,</span><br><span class="line"> 	&#123;<span class="attr">id</span>: <span class="number">3</span>, <span class="attr">name</span>: <span class="string">&#x27;王三&#x27;</span>, <span class="attr">pid</span>: <span class="number">1</span>&#125;, </span><br><span class="line">	&#123;<span class="attr">id</span>: <span class="number">4</span>, <span class="attr">name</span>: <span class="string">&#x27;赵四&#x27;</span>, <span class="attr">pid</span>: <span class="number">3</span>&#125;, </span><br><span class="line">	&#123;<span class="attr">id</span>: <span class="number">5</span>, <span class="attr">name</span>: <span class="string">&#x27;钱六&#x27;</span>, <span class="attr">pid</span>: <span class="number">4</span>&#125;</span><br><span class="line"> ]</span><br><span class="line"></span><br><span class="line">输出：</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+
+### 3、统计字符串中连续出现的最多的字符，以及字符的个数
+<figure class="highlight ts"><table><tr><td class="code"><pre><span class="line">给定：<span class="string">&#x27;aabbaakejsbcccwqaac&#x27;</span></span><br><span class="line"></span><br><span class="line">输出：&#123; <span class="attr">text</span>: <span class="string">&#x27;c&#x27;</span>, <span class="attr">count</span>: <span class="number">3</span> &#125;</span><br><span class="line"></span><br><span class="line">解析：</span><br><span class="line"><span class="keyword">const</span> getMax = <span class="function"><span class="params">str</span> =&gt;</span> &#123;</span><br><span class="line">  <span class="keyword">let</span> res = &#123; <span class="attr">text</span>: str[<span class="number">0</span>], <span class="attr">count</span>: <span class="number">1</span> &#125;;</span><br><span class="line">  <span class="keyword">let</span> count = <span class="number">1</span>;</span><br><span class="line">  <span class="keyword">for</span> (<span class="keyword">let</span> i = <span class="number">0</span>; i &lt; str.length; i++) &#123;</span><br><span class="line">    <span class="keyword">if</span> (str[i] === str[i + <span class="number">1</span>]) &#123;</span><br><span class="line">      count++;</span><br><span class="line">      <span class="keyword">if</span> (!res.text) &#123;</span><br><span class="line">        res = &#123; <span class="attr">text</span>: str[i], count &#125;;</span><br><span class="line">      &#125;</span><br><span class="line">      <span class="keyword">if</span> (res.count &lt; count) &#123;</span><br><span class="line">        res = &#123; <span class="attr">text</span>: str[i], count &#125;;</span><br><span class="line">      &#125;</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">      count = <span class="number">1</span>;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">return</span> res;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="built_in">console</span>.log(getMax(<span class="string">&#x27;aabbaakejsbcccwqaac&#x27;</span>)); <span class="comment">// &#123; text: &#x27;c&#x27;, count: 3 &#125;</span></span><br><span class="line"></span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+script start 
+async1 start
+async2
+promise1
+promise4
+script end
+async1 end
+promise2
+promise5
+promise3
+setTimeout
+
+
+]]></content>
+      <categories>
+        <category>题库</category>
+      </categories>
+      <tags>
+        <tag>题库</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>微前端的设计与实现</title>
+    <url>/2021/12/31/%E5%BE%AE%E5%89%8D%E7%AB%AF%E7%9A%84%E8%AE%BE%E8%AE%A1%E4%B8%8E%E5%AE%9E%E7%8E%B0/</url>
+    <content><![CDATA[<section id="nice" data-tool="mdnice编辑器" data-website="https://www.mdnice.com" style="font-size: 16px; padding: 0 10px; word-spacing: 0px; word-break: break-word; word-wrap: break-word; text-align: left; line-height: 1.35; color: #333; font-family: Optima-Regular, PingFangTC-light; letter-spacing: 1.5px;"><p data-tool="mdnice编辑器" style="padding-top: 8px; padding-bottom: 8px; line-height: 26px; color: #2b2b2b; margin: 10px 0px; letter-spacing: 2px; font-size: 16px; word-spacing: 2px;">微前端最早由ThoughtWorks在2016年提出，其主要思想是在前端引入类似后端微服务架构的理念，将庞大的巨石应用拆分成多个独立的应用（以下称微应用）。每个独立应用都可独立开发、测试和部署，然后在通过一个容器应用（以下称主应用）将所有独立应用组合起来呈现个用户。</p>
+<p data-tool="mdnice编辑器" style="padding-top: 8px; padding-bottom: 8px; line-height: 26px; color: #2b2b2b; margin: 10px 0px; letter-spacing: 2px; font-size: 16px; word-spacing: 2px;">实现微前端的方式有很多种，我们熟知的iframe其实就属于微前端，其具有自带沙箱隔离，开发分离等优点，但是同时也有很多额外的问题，重复加载脚本、SEO较差、多个滚动条等等问题导致其无法广泛应用。而现代SPA框架的兴起给微前端带来了新的福音，结合SPA路由形式去加载指定的子应用，如此就可以实现一个微前端的架构。</p>
+<p data-tool="mdnice编辑器" style="padding-top: 8px; padding-bottom: 8px; line-height: 26px; color: #2b2b2b; margin: 10px 0px; letter-spacing: 2px; font-size: 16px; word-spacing: 2px;">不过实现微前端架构还需要解决以下几个问题：</p>
+<ul data-tool="mdnice编辑器" style="margin-top: 8px; margin-bottom: 8px; padding-left: 25px; font-size: 15px; color: #595959; list-style-type: circle;">
+<li><section style="margin-top: 5px; margin-bottom: 5px; line-height: 26px; text-align: left; font-size: 16px; font-weight: normal; color: #595959;">如何实现路由分发应用。</section></li><li><section style="margin-top: 5px; margin-bottom: 5px; line-height: 26px; text-align: left; font-size: 16px; font-weight: normal; color: #595959;">如何控制微应用加载、卸载。</section></li><li><section style="margin-top: 5px; margin-bottom: 5px; line-height: 26px; text-align: left; font-size: 16px; font-weight: normal; color: #595959;">微应用通过什么形式传递给主应用。</section></li><li><section style="margin-top: 5px; margin-bottom: 5px; line-height: 26px; text-align: left; font-size: 16px; font-weight: normal; color: #595959;">微应用之间的如何进行数据共享。</section></li><li><section style="margin-top: 5px; margin-bottom: 5px; line-height: 26px; text-align: left; font-size: 16px; font-weight: normal; color: #595959;">微应用之间如何做到互不影响。</section></li></ul>
+<h2 data-tool="mdnice编辑器" style="margin-top: 30px; margin-bottom: 15px; padding: 0px; font-weight: bold; color: black; font-size: 22px; display: block; border-bottom: 4px solid #4CAF50;"><span class="prefix" style="display: none;"></span><span class="content" style="display: flex; color: #4CAF50; font-size: 20px;">一、通过路由分发应用</span><span class="suffix" style="display: flex; box-sizing: border-box; width: 20px; height: 10px; border-top-left-radius: 20px; border-top-right-radius: 20px; background: RGBA(76, 175, 80, .5); color: rgb(255, 255, 255); font-size: 16px; letter-spacing: 0.544px; justify-content: flex-end; float: right; margin-top: -10px; box-sizing: border-box !important; overflow-wrap: break-word !important;"></span></h2>
+<p data-tool="mdnice编辑器" style="padding-top: 8px; padding-bottom: 8px; line-height: 26px; color: #2b2b2b; margin: 10px 0px; letter-spacing: 2px; font-size: 16px; word-spacing: 2px;">在SPA中，路由是通过框架来进行分发的，框架通过路由分发指定到具体的某个组件进行展示；在微前端架构中，微前端承接了框架的工作，通过路由去匹配对应的应用，在由应用去分发到对应的组件上。
+从实现方式上来看，微前端的路由设计与前端路由解决方案如react-router、vue-router等也并无较大的区别，都是通过劫持路由进行实现，简单的代码实现：</p>
+<pre class="custom" data-tool="mdnice编辑器" style="margin-top: 10px; margin-bottom: 10px; border-radius: 5px; box-shadow: rgba(0, 0, 0, 0.55) 0px 2px 10px;"><span style="display: block; background: url(https://files.mdnice.com/point.png); height: 30px; width: 100%; background-size: 40px; background-repeat: no-repeat; background-color: #282c34; margin-bottom: -7px; border-radius: 5px; background-position: 10px 10px;"></span><code class="hljs" style="overflow-x: auto; padding: 16px; color: #abb2bf; display: block; font-family: Operator Mono, Consolas, Monaco, Menlo, monospace; font-size: 12px; -webkit-overflow-scrolling: touch; letter-spacing: 0px; padding-top: 15px; background: #282c34; border-radius: 5px;"><span class="hljs-comment" style="color: #5c6370; font-style: italic; line-height: 26px;">/* 处理更新微应用方法 */</span>
+<span/><span class="hljs-function" style="line-height: 26px;"><span class="hljs-keyword" style="color: #c678dd; line-height: 26px;">function</span> <span class="hljs-title" style="color: #61aeee; line-height: 26px;">reroute</span> (<span class="hljs-params" style="line-height: 26px;"></span>) </span>&#123;
+<span/> <span class="hljs-comment" style="color: #5c6370; font-style: italic; line-height: 26px;">// <span class="hljs-doctag" style="color: #c678dd; line-height: 26px;">TODO:</span></span>
+<span/>&#125;
+<span/><span class="hljs-comment" style="color: #5c6370; font-style: italic; line-height: 26px;">/* 监听路由变化,触发更新微应用方法 */</span>
+<span/><span class="hljs-built_in" style="color: #e6c07b; line-height: 26px;">window</span>.addEventListener(<span class="hljs-string" style="color: #98c379; line-height: 26px;">'hashchange'</span>, reroute)
+<span/><span class="hljs-built_in" style="color: #e6c07b; line-height: 26px;">window</span>.addEventListener(<span class="hljs-string" style="color: #98c379; line-height: 26px;">"popstate"</span>, reroute);
+<span/><span class="hljs-built_in" style="color: #e6c07b; line-height: 26px;">window</span>.history.pushState = patchedUpdateState(<span class="hljs-built_in" style="color: #e6c07b; line-height: 26px;">window</span>.history.pushState)
+<span/><span class="hljs-built_in" style="color: #e6c07b; line-height: 26px;">window</span>.history.replaceState = patchedUpdateState(<span class="hljs-built_in" style="color: #e6c07b; line-height: 26px;">window</span>.history.replaceState)
+<span/>
+<span/><span class="hljs-comment" style="color: #5c6370; font-style: italic; line-height: 26px;">/* 增强pushState和replaceState */</span>
+<span/><span class="hljs-function" style="line-height: 26px;"><span class="hljs-keyword" style="color: #c678dd; line-height: 26px;">function</span> <span class="hljs-title" style="color: #61aeee; line-height: 26px;">patchedUpdateState</span> (<span class="hljs-params" style="line-height: 26px;">updateState</span>) </span>&#123;
+<span/>  <span class="hljs-keyword" style="color: #c678dd; line-height: 26px;">return</span> <span class="hljs-function" style="line-height: 26px;"><span class="hljs-keyword" style="color: #c678dd; line-height: 26px;">function</span> (<span class="hljs-params" style="line-height: 26px;">...args</span>) </span>&#123;
+<span/>    <span class="hljs-comment" style="color: #5c6370; font-style: italic; line-height: 26px;">// 当前url</span>
+<span/>    <span class="hljs-keyword" style="color: #c678dd; line-height: 26px;">const</span> urlBefore = <span class="hljs-built_in" style="color: #e6c07b; line-height: 26px;">window</span>.location.href;
+<span/>    <span class="hljs-comment" style="color: #5c6370; font-style: italic; line-height: 26px;">// pushState or replaceState 的执行结果</span>
+<span/>    <span class="hljs-keyword" style="color: #c678dd; line-height: 26px;">const</span> result = Reflect.apply(updateState, <span class="hljs-keyword" style="color: #c678dd; line-height: 26px;">this</span>, args)
+<span/>    <span class="hljs-comment" style="color: #5c6370; font-style: italic; line-height: 26px;">// 执行updateState之后的url</span>
+<span/>    <span class="hljs-keyword" style="color: #c678dd; line-height: 26px;">const</span> urlAfter = <span class="hljs-built_in" style="color: #e6c07b; line-height: 26px;">window</span>.location.href
+<span/>    <span class="hljs-keyword" style="color: #c678dd; line-height: 26px;">if</span> (urlBefore !== urlAfter) &#123;
+<span/>      reroute()
+<span/>    &#125;
+<span/>    <span class="hljs-keyword" style="color: #c678dd; line-height: 26px;">return</span> result
+<span/>  &#125;
+<span/>&#125;
+<span/>
+<span/></code></pre>
+<p data-tool="mdnice编辑器" style="padding-top: 8px; padding-bottom: 8px; line-height: 26px; color: #2b2b2b; margin: 10px 0px; letter-spacing: 2px; font-size: 16px; word-spacing: 2px;">以上可以看到监听了hashchange和popstate的变化，同时通过装饰器模式向pushState和replaceState方法添加了判断逻辑，确保当路由发生变化的时候执行reRoute方法去处理更新微应用状态，那么如何处理微应用状态呢？</p>
+<h2 data-tool="mdnice编辑器" style="margin-top: 30px; margin-bottom: 15px; padding: 0px; font-weight: bold; color: black; font-size: 22px; display: block; border-bottom: 4px solid #4CAF50;"><span class="prefix" style="display: none;"></span><span class="content" style="display: flex; color: #4CAF50; font-size: 20px;">二、通过生命周期控制应用加载、卸载</span><span class="suffix" style="display: flex; box-sizing: border-box; width: 20px; height: 10px; border-top-left-radius: 20px; border-top-right-radius: 20px; background: RGBA(76, 175, 80, .5); color: rgb(255, 255, 255); font-size: 16px; letter-spacing: 0.544px; justify-content: flex-end; float: right; margin-top: -10px; box-sizing: border-box !important; overflow-wrap: break-word !important;"></span></h2>
+<p data-tool="mdnice编辑器" style="padding-top: 8px; padding-bottom: 8px; line-height: 26px; color: #2b2b2b; margin: 10px 0px; letter-spacing: 2px; font-size: 16px; word-spacing: 2px;">我们先来看一下微应用的注册结构，根据结构反看实现比较容易理解。</p>
+<pre class="custom" data-tool="mdnice编辑器" style="margin-top: 10px; margin-bottom: 10px; border-radius: 5px; box-shadow: rgba(0, 0, 0, 0.55) 0px 2px 10px;"><span style="display: block; background: url(https://files.mdnice.com/point.png); height: 30px; width: 100%; background-size: 40px; background-repeat: no-repeat; background-color: #282c34; margin-bottom: -7px; border-radius: 5px; background-position: 10px 10px;"></span><code class="hljs" style="overflow-x: auto; padding: 16px; color: #abb2bf; display: block; font-family: Operator Mono, Consolas, Monaco, Menlo, monospace; font-size: 12px; -webkit-overflow-scrolling: touch; letter-spacing: 0px; padding-top: 15px; background: #282c34; border-radius: 5px;"><span class="hljs-comment" style="color: #5c6370; font-style: italic; line-height: 26px;">// 微应用注册结构</span>
+<span/>&#123;
+<span/>    <span class="hljs-comment" style="color: #5c6370; font-style: italic; line-height: 26px;">// 微应用名称</span>
+<span/>    name: <span class="hljs-string" style="color: #98c379; line-height: 26px;">'app1'</span>,
+<span/>    <span class="hljs-comment" style="color: #5c6370; font-style: italic; line-height: 26px;">// 微应用加载函数，是一个promise</span>
+<span/>    app: loadApp(<span class="hljs-string" style="color: #98c379; line-height: 26px;">'http://localhost:8081'</span>, <span class="hljs-string" style="color: #98c379; line-height: 26px;">'app1'</span>),
+<span/>    <span class="hljs-comment" style="color: #5c6370; font-style: italic; line-height: 26px;">// 当路由满足条件时，去挂载子应用</span>
+<span/>    activeWhen: <span class="hljs-function" style="line-height: 26px;"><span class="hljs-params" style="line-height: 26px;">location</span> =&gt;</span> location.pathname.startsWith(<span class="hljs-string" style="color: #98c379; line-height: 26px;">'/app1'</span>),
+<span/>    <span class="hljs-comment" style="color: #5c6370; font-style: italic; line-height: 26px;">// 传递给微应用的对象</span>
+<span/>    customProps: &#123;&#125;
+<span/>&#125;
+<span/></code></pre>
+<p data-tool="mdnice编辑器" style="padding-top: 8px; padding-bottom: 8px; line-height: 26px; color: #2b2b2b; margin: 10px 0px; letter-spacing: 2px; font-size: 16px; word-spacing: 2px;">根据SPA框架我们能够发现，框架中通过生命周期用来控制组件加载卸载，Single-spa也是从中获得的灵感，用生命周期来控制微应用，根据状态可以分为一下几种状态：</p>
+<pre class="custom" data-tool="mdnice编辑器" style="margin-top: 10px; margin-bottom: 10px; border-radius: 5px; box-shadow: rgba(0, 0, 0, 0.55) 0px 2px 10px;"><span style="display: block; background: url(https://files.mdnice.com/point.png); height: 30px; width: 100%; background-size: 40px; background-repeat: no-repeat; background-color: #282c34; margin-bottom: -7px; border-radius: 5px; background-position: 10px 10px;"></span><code class="hljs" style="overflow-x: auto; padding: 16px; color: #abb2bf; display: block; font-family: Operator Mono, Consolas, Monaco, Menlo, monospace; font-size: 12px; -webkit-overflow-scrolling: touch; letter-spacing: 0px; padding-top: 15px; background: #282c34; border-radius: 5px;"><span class="hljs-comment" style="color: #5c6370; font-style: italic; line-height: 26px;">// 子应用注册以后的初始状态</span>
+<span/><span class="hljs-keyword" style="color: #c678dd; line-height: 26px;">const</span> NOT_LOADED = <span class="hljs-string" style="color: #98c379; line-height: 26px;">'NOT_LOADED'</span>
+<span/><span class="hljs-comment" style="color: #5c6370; font-style: italic; line-height: 26px;">// 表示正在加载子应用源代码</span>
+<span/><span class="hljs-keyword" style="color: #c678dd; line-height: 26px;">const</span> LOADING_SOURCE_CODE = <span class="hljs-string" style="color: #98c379; line-height: 26px;">'LOADING_SOURCE_CODE'</span>
+<span/><span class="hljs-comment" style="color: #5c6370; font-style: italic; line-height: 26px;">// 执行完 app.loadApp，即子应用加载完以后的状态</span>
+<span/><span class="hljs-keyword" style="color: #c678dd; line-height: 26px;">const</span> NOT_BOOTSTRAPPED = <span class="hljs-string" style="color: #98c379; line-height: 26px;">'NOT_BOOTSTRAPPED'</span>
+<span/><span class="hljs-comment" style="color: #5c6370; font-style: italic; line-height: 26px;">// 正在初始化</span>
+<span/><span class="hljs-keyword" style="color: #c678dd; line-height: 26px;">const</span> BOOTSTRAPPING = <span class="hljs-string" style="color: #98c379; line-height: 26px;">'BOOTSTRAPPING'</span>
+<span/><span class="hljs-comment" style="color: #5c6370; font-style: italic; line-height: 26px;">// 执行 app.bootstrap 之后的状态，表是初始化完成，处于未挂载的状态</span>
+<span/><span class="hljs-keyword" style="color: #c678dd; line-height: 26px;">const</span> NOT_MOUNTED = <span class="hljs-string" style="color: #98c379; line-height: 26px;">'NOT_MOUNTED'</span>
+<span/><span class="hljs-comment" style="color: #5c6370; font-style: italic; line-height: 26px;">// 正在挂载</span>
+<span/><span class="hljs-keyword" style="color: #c678dd; line-height: 26px;">const</span> MOUNTING = <span class="hljs-string" style="color: #98c379; line-height: 26px;">'MOUNTING'</span>
+<span/><span class="hljs-comment" style="color: #5c6370; font-style: italic; line-height: 26px;">// 挂载完成，app.mount 执行完毕</span>
+<span/><span class="hljs-keyword" style="color: #c678dd; line-height: 26px;">const</span> MOUNTED = <span class="hljs-string" style="color: #98c379; line-height: 26px;">'MOUNTED'</span>
+<span/><span class="hljs-keyword" style="color: #c678dd; line-height: 26px;">const</span> UPDATING = <span class="hljs-string" style="color: #98c379; line-height: 26px;">'UPDATING'</span>
+<span/><span class="hljs-comment" style="color: #5c6370; font-style: italic; line-height: 26px;">// 正在卸载</span>
+<span/><span class="hljs-keyword" style="color: #c678dd; line-height: 26px;">const</span> UNMOUNTING = <span class="hljs-string" style="color: #98c379; line-height: 26px;">'UNMOUNTING'</span>
+<span/>...
+<span/></code></pre>
+<p data-tool="mdnice编辑器" style="padding-top: 8px; padding-bottom: 8px; line-height: 26px; color: #2b2b2b; margin: 10px 0px; letter-spacing: 2px; font-size: 16px; word-spacing: 2px;">微应用在注册时会被统一加入一个status参数用来标记当前应用状态，初始值为NOT_LOADED，然后根据加载的不同时机以及微应用的状态进行不同的状态区分，可以分为三大类（实际情况会更多）：待加载、待挂载和待卸载，根据三种状态执行不同的操作。</p>
+<p data-tool="mdnice编辑器" style="padding-top: 8px; padding-bottom: 8px; line-height: 26px; color: #2b2b2b; margin: 10px 0px; letter-spacing: 2px; font-size: 16px; word-spacing: 2px;">除此之外，为了能够将微前端生命周期与微应用声明周期关联起来，我们就需要获取到微应用的声明周期供我们使用，所以在子应用中我们采用umd这种兼容性更好的打包模块格式打包，在子应用中export生命周期挂载在global上，然后我们根据微应用的注册结构的app参数就可以拿到微应用暴露出来的生命周期，将微应用的生命周期一同加入微应用配置文件中就具备了所有可操作条件，下面看一下如何处理不同状态的微应用：</p>
+<pre class="custom" data-tool="mdnice编辑器" style="margin-top: 10px; margin-bottom: 10px; border-radius: 5px; box-shadow: rgba(0, 0, 0, 0.55) 0px 2px 10px;"><span style="display: block; background: url(https://files.mdnice.com/point.png); height: 30px; width: 100%; background-size: 40px; background-repeat: no-repeat; background-color: #282c34; margin-bottom: -7px; border-radius: 5px; background-position: 10px 10px;"></span><code class="hljs" style="overflow-x: auto; padding: 16px; color: #abb2bf; display: block; font-family: Operator Mono, Consolas, Monaco, Menlo, monospace; font-size: 12px; -webkit-overflow-scrolling: touch; letter-spacing: 0px; padding-top: 15px; background: #282c34; border-radius: 5px;"><span class="hljs-function" style="line-height: 26px;"><span class="hljs-keyword" style="color: #c678dd; line-height: 26px;">function</span> <span class="hljs-title" style="color: #61aeee; line-height: 26px;">reroute</span>(<span class="hljs-params" style="line-height: 26px;"></span>)</span>&#123;
+<span/> <span class="hljs-comment" style="color: #5c6370; font-style: italic; line-height: 26px;">// 将微应用根据状态分为三类</span>
+<span/>  <span class="hljs-keyword" style="color: #c678dd; line-height: 26px;">const</span> &#123; appsToLoad, appsToMount, appsToUnmount &#125; =   getAppChanges()
+<span/>  <span class="hljs-keyword" style="color: #c678dd; line-height: 26px;">if</span> (isStarted) &#123;
+<span/>    performAppChanges()
+<span/>  &#125; <span class="hljs-keyword" style="color: #c678dd; line-height: 26px;">else</span> &#123;
+<span/>    loadApps()
+<span/>  &#125;
+<span/>  <span class="hljs-function" style="line-height: 26px;"><span class="hljs-keyword" style="color: #c678dd; line-height: 26px;">function</span> <span class="hljs-title" style="color: #61aeee; line-height: 26px;">loadApps</span> (<span class="hljs-params" style="line-height: 26px;"></span>) </span>&#123;
+<span/>    appsToLoad.map(toLoad)
+<span/>  &#125;
+<span/>  <span class="hljs-function" style="line-height: 26px;"><span class="hljs-keyword" style="color: #c678dd; line-height: 26px;">function</span> <span class="hljs-title" style="color: #61aeee; line-height: 26px;">performAppChanges</span> (<span class="hljs-params" style="line-height: 26px;"></span>) </span>&#123;
+<span/>    <span class="hljs-comment" style="color: #5c6370; font-style: italic; line-height: 26px;">// 卸载</span>
+<span/>    appsToUnmount.map(toUnmount)
+<span/>    <span class="hljs-comment" style="color: #5c6370; font-style: italic; line-height: 26px;">// 初始化 + 挂载</span>
+<span/>    appsToMount.map(tryToBoostrapAndMount)
+<span/>  &#125;
+<span/>&#125;
+<span/></code></pre>
+<p data-tool="mdnice编辑器" style="padding-top: 8px; padding-bottom: 8px; line-height: 26px; color: #2b2b2b; margin: 10px 0px; letter-spacing: 2px; font-size: 16px; word-spacing: 2px;">getAppChanges方法通过循环区分出三种状态微应用，然后根据isStarted用来判断是否微应用已经加载，对于未加载的微应用进行加载，已经加载的子应用根据状态执行对应微应用配置文件中的生命周期加载、卸载。
+至此，我们具备了一个微前端的基本形式。</p>
+<h2 data-tool="mdnice编辑器" style="margin-top: 30px; margin-bottom: 15px; padding: 0px; font-weight: bold; color: black; font-size: 22px; display: block; border-bottom: 4px solid #4CAF50;"><span class="prefix" style="display: none;"></span><span class="content" style="display: flex; color: #4CAF50; font-size: 20px;">三、微应用通过什么形式提供渲染入口</span><span class="suffix" style="display: flex; box-sizing: border-box; width: 20px; height: 10px; border-top-left-radius: 20px; border-top-right-radius: 20px; background: RGBA(76, 175, 80, .5); color: rgb(255, 255, 255); font-size: 16px; letter-spacing: 0.544px; justify-content: flex-end; float: right; margin-top: -10px; box-sizing: border-box !important; overflow-wrap: break-word !important;"></span></h2>
+<p data-tool="mdnice编辑器" style="padding-top: 8px; padding-bottom: 8px; line-height: 26px; color: #2b2b2b; margin: 10px 0px; letter-spacing: 2px; font-size: 16px; word-spacing: 2px;">微前端架构中要想做到技术无关和独立部署，那么采用运行时引入肯定是最佳的方案，但是微应用要提供什么形式的资源作为入口提供给主应用呢？目前有两种方案，一种是通过js引入，single-spa就是采用的该方法，一种是根据html引入，qiankun采用的方法。下面对比一下两种方案：</p>
+<p data-tool="mdnice编辑器" style="padding-top: 8px; padding-bottom: 8px; line-height: 26px; color: #2b2b2b; margin: 10px 0px; letter-spacing: 2px; font-size: 16px; word-spacing: 2px;">通过js方式引入，通常需要微应用将资源打成一个 entry script，这种情况下就会出现颇多限制，比如单个js包过大，资源并行加载等特性也无法利用。同时在js 引入方案中，主框架需要在微应用加载之前构建好相应的容器节点，然后将获取到的微应用注入构建好的节点中完成渲染。</p>
+<p data-tool="mdnice编辑器" style="padding-top: 8px; padding-bottom: 8px; line-height: 26px; color: #2b2b2b; margin: 10px 0px; letter-spacing: 2px; font-size: 16px; word-spacing: 2px;">通过html形式引入，该方式较为灵活，主框架通过fetch html方式获取到子应用的静态资源，同时将 HTML document 作为子节点塞到主框架的容器中。这样不仅可以极大的减少主应用的接入成本，子应用的开发方式及打包方式基本上也不需要调整，而且可以天然的解决子应用之间样式隔离的问题。</p>
+<h2 data-tool="mdnice编辑器" style="margin-top: 30px; margin-bottom: 15px; padding: 0px; font-weight: bold; color: black; font-size: 22px; display: block; border-bottom: 4px solid #4CAF50;"><span class="prefix" style="display: none;"></span><span class="content" style="display: flex; color: #4CAF50; font-size: 20px;">四、微应用之间的数据共享</span><span class="suffix" style="display: flex; box-sizing: border-box; width: 20px; height: 10px; border-top-left-radius: 20px; border-top-right-radius: 20px; background: RGBA(76, 175, 80, .5); color: rgb(255, 255, 255); font-size: 16px; letter-spacing: 0.544px; justify-content: flex-end; float: right; margin-top: -10px; box-sizing: border-box !important; overflow-wrap: break-word !important;"></span></h2>
+<p data-tool="mdnice编辑器" style="padding-top: 8px; padding-bottom: 8px; line-height: 26px; color: #2b2b2b; margin: 10px 0px; letter-spacing: 2px; font-size: 16px; word-spacing: 2px;">single-sap并不建议微应用之间大量共享数据，其认为如果两个应用中耦合数据过多，那么我们就需要考虑是否应该将它们拆分了，不过还是提供了共享的方式，具体可参考<a href="https://zh-hans.single-spa.js.org/docs/faq/#%E5%A6%82%E4%BD%95%E5%9C%A8%E5%BA%94%E7%94%A8%E7%A8%8B%E5%BA%8F%E9%97%B4%E5%85%B1%E4%BA%AB%E7%8A%B6%E6%80%81%EF%BC%9F" style="text-decoration: none; word-wrap: break-word; color: #399003; font-weight: normal; border-bottom: 1px solid #399003;">这里</a>。</p>
+<p data-tool="mdnice编辑器" style="padding-top: 8px; padding-bottom: 8px; line-height: 26px; color: #2b2b2b; margin: 10px 0px; letter-spacing: 2px; font-size: 16px; word-spacing: 2px;">qiankun则是采用两种方式进行数据共享，对于主应用和微应用之间基于 props 以单向数据流的方式传递给子应用进行共享；对不同微应用间采用基于浏览器原生事件进行数据通信。</p>
+<p data-tool="mdnice编辑器" style="padding-top: 8px; padding-bottom: 8px; line-height: 26px; color: #2b2b2b; margin: 10px 0px; letter-spacing: 2px; font-size: 16px; word-spacing: 2px;">除此之外，我们还可以采用一些全局的存储方式进行数据共享，例如localStorage、sessionStorage等。</p>
+<h2 data-tool="mdnice编辑器" style="margin-top: 30px; margin-bottom: 15px; padding: 0px; font-weight: bold; color: black; font-size: 22px; display: block; border-bottom: 4px solid #4CAF50;"><span class="prefix" style="display: none;"></span><span class="content" style="display: flex; color: #4CAF50; font-size: 20px;">五、应用隔离</span><span class="suffix" style="display: flex; box-sizing: border-box; width: 20px; height: 10px; border-top-left-radius: 20px; border-top-right-radius: 20px; background: RGBA(76, 175, 80, .5); color: rgb(255, 255, 255); font-size: 16px; letter-spacing: 0.544px; justify-content: flex-end; float: right; margin-top: -10px; box-sizing: border-box !important; overflow-wrap: break-word !important;"></span></h2>
+<h3 data-tool="mdnice编辑器" style="padding: 0px; color: black; font-size: 17px; font-weight: bold; text-align: center; position: relative; margin-top: 20px; margin-bottom: 20px;"><span class="prefix" style="display: none;"></span><span class="content" style="color: #2b2b2b; padding-bottom: 2px;"><span style="width: 30px; height: 30px; display: block; background-image: url(https://my-wechat.mdnice.com/grass-green.png); background-position: center; background-size: 30px; margin: auto; opacity: 1; background-repeat: no-repeat; margin-bottom: -8px;"></span>1、JS隔离</span><span class="suffix" style="display: none;"></span></h3>
+<p data-tool="mdnice编辑器" style="padding-top: 8px; padding-bottom: 8px; line-height: 26px; color: #2b2b2b; margin: 10px 0px; letter-spacing: 2px; font-size: 16px; word-spacing: 2px;">qiankun采用了沙箱的方式进行隔离，对于沙箱的具体实现可以去搜罗一下文章，也是一个很有意思的东西，主要说一下qiankun的沙箱，qiankun主要有两种沙箱，一种是对于不支持proxy的快照沙箱snapshotSandbox，一种是基于proxy的代理沙箱proxySandbox。</p>
+<p data-tool="mdnice编辑器" style="padding-top: 8px; padding-bottom: 8px; line-height: 26px; color: #2b2b2b; margin: 10px 0px; letter-spacing: 2px; font-size: 16px; word-spacing: 2px;">快照沙箱，整体思路是先将window对象copy给一个新的对象保存下来，然后该应用的所有操作都基于该新对象，所有的修改在新对象中进行，然后在实例销毁前与window进行对比，将更改的部分保留下来，然后在下次进入该实例是，将更改的部分通过保留的数据进行还原，以达到退出前的样子。</p>
+<p data-tool="mdnice编辑器" style="padding-top: 8px; padding-bottom: 8px; line-height: 26px; color: #2b2b2b; margin: 10px 0px; letter-spacing: 2px; font-size: 16px; word-spacing: 2px;">代理沙箱，主要是采用ES6的proxy特性，通过proxy我们可以获取到对象上所有的改变，主体思想不变，都是通过代理全局对象，监控所有修改，然后将所有改变缓存起来，等该实例在此进入的时候根据数据进行还原。不过通过proxy实现可以支持多实例同时运行。</p>
+<h3 data-tool="mdnice编辑器" style="padding: 0px; color: black; font-size: 17px; font-weight: bold; text-align: center; position: relative; margin-top: 20px; margin-bottom: 20px;"><span class="prefix" style="display: none;"></span><span class="content" style="color: #2b2b2b; padding-bottom: 2px;"><span style="width: 30px; height: 30px; display: block; background-image: url(https://my-wechat.mdnice.com/grass-green.png); background-position: center; background-size: 30px; margin: auto; opacity: 1; background-repeat: no-repeat; margin-bottom: -8px;"></span>2、CSS隔离</span><span class="suffix" style="display: none;"></span></h3>
+<p data-tool="mdnice编辑器" style="padding-top: 8px; padding-bottom: 8px; line-height: 26px; color: #2b2b2b; margin: 10px 0px; letter-spacing: 2px; font-size: 16px; word-spacing: 2px;">做到css隔离的实现方式有很多，比如最简单直接的办法通过约定css前缀的方式来避免样式冲突，每个微应用都拥有特定的前缀，该方案适用于新项目中，对于历史遗留项目，整体适配起来还是比较困难的。</p>
+<p data-tool="mdnice编辑器" style="padding-top: 8px; padding-bottom: 8px; line-height: 26px; color: #2b2b2b; margin: 10px 0px; letter-spacing: 2px; font-size: 16px; word-spacing: 2px;">qiankun通过fetch html方式引入微应用资源，此种方式可以天然的解决样式冲突问题，它会将微应用的所有资源进行解析分类，然后在进行引入，在微应用销毁时又会整体移除css tree，可以做到相互不影响，有兴趣的大家可以看一下 <a href="https://github.com/kuitos/import-html-entry" style="text-decoration: none; word-wrap: break-word; color: #399003; font-weight: normal; border-bottom: 1px solid #399003;">import-html-entry</a>库，代码不多，很精简。</p>
+<h2 data-tool="mdnice编辑器" style="margin-top: 30px; margin-bottom: 15px; padding: 0px; font-weight: bold; color: black; font-size: 22px; display: block; border-bottom: 4px solid #4CAF50;"><span class="prefix" style="display: none;"></span><span class="content" style="display: flex; color: #4CAF50; font-size: 20px;">六、总结</span><span class="suffix" style="display: flex; box-sizing: border-box; width: 20px; height: 10px; border-top-left-radius: 20px; border-top-right-radius: 20px; background: RGBA(76, 175, 80, .5); color: rgb(255, 255, 255); font-size: 16px; letter-spacing: 0.544px; justify-content: flex-end; float: right; margin-top: -10px; box-sizing: border-box !important; overflow-wrap: break-word !important;"></span></h2>
+<p data-tool="mdnice编辑器" style="padding-top: 8px; padding-bottom: 8px; line-height: 26px; color: #2b2b2b; margin: 10px 0px; letter-spacing: 2px; font-size: 16px; word-spacing: 2px;">根据以上可以发现，微前端其实主要做了两件事情，一是处理加载微应用；二是通过生命周期管理各个微应用。重点在于主应用提供的各种配置、入口，然后具体由微前端框架进行操作，在特定的时间节点执行微应用的生命周期函数。</p>
+<h2 data-tool="mdnice编辑器" style="margin-top: 30px; margin-bottom: 15px; padding: 0px; font-weight: bold; color: black; font-size: 22px; display: block; border-bottom: 4px solid #4CAF50;"><span class="prefix" style="display: none;"></span><span class="content" style="display: flex; color: #4CAF50; font-size: 20px;">相关链接</span><span class="suffix" style="display: flex; box-sizing: border-box; width: 20px; height: 10px; border-top-left-radius: 20px; border-top-right-radius: 20px; background: RGBA(76, 175, 80, .5); color: rgb(255, 255, 255); font-size: 16px; letter-spacing: 0.544px; justify-content: flex-end; float: right; margin-top: -10px; box-sizing: border-box !important; overflow-wrap: break-word !important;"></span></h2>
+<ul data-tool="mdnice编辑器" style="margin-top: 8px; margin-bottom: 8px; padding-left: 25px; font-size: 15px; color: #595959; list-style-type: circle;">
+<li><section style="margin-top: 5px; margin-bottom: 5px; line-height: 26px; text-align: left; font-size: 16px; font-weight: normal; color: #595959;"><a href="https://github.com/single-spa/single-spa" style="text-decoration: none; word-wrap: break-word; color: #399003; font-weight: normal; border-bottom: 1px solid #399003;">single-spa</a></section></li><li><section style="margin-top: 5px; margin-bottom: 5px; line-height: 26px; text-align: left; font-size: 16px; font-weight: normal; color: #595959;"><a href="https://qiankun.umijs.org/" style="text-decoration: none; word-wrap: break-word; color: #399003; font-weight: normal; border-bottom: 1px solid #399003;">qiankun</a></section></li><li><section style="margin-top: 5px; margin-bottom: 5px; line-height: 26px; text-align: left; font-size: 16px; font-weight: normal; color: #595959;"><a href="https://zhuanlan.zhihu.com/p/78362028" style="text-decoration: none; word-wrap: break-word; color: #399003; font-weight: normal; border-bottom: 1px solid #399003;">可能是你见过最完善的微前端解决方案 - 知乎</a></section></li><li><section style="margin-top: 5px; margin-bottom: 5px; line-height: 26px; text-align: left; font-size: 16px; font-weight: normal; color: #595959;"><a href="https://juejin.im/post/6862661545592111111#heading-72" style="text-decoration: none; word-wrap: break-word; color: #399003; font-weight: normal; border-bottom: 1px solid #399003;">微前端框架 之 single-spa 从入门到精通</a></section></li><li><section style="margin-top: 5px; margin-bottom: 5px; line-height: 26px; text-align: left; font-size: 16px; font-weight: normal; color: #595959;"><a href="https://developer.aliyun.com/article/761478?spm=a2c6h.14164896.0.0.54e52bcbaA0PUn" style="text-decoration: none; word-wrap: break-word; color: #399003; font-weight: normal; border-bottom: 1px solid #399003;">阿里云开放平台微前端方案的沙箱实现-阿里云开发者社区</a></section></li></ul>
+<blockquote class="multiquote-1" data-tool="mdnice编辑器" style="display: block; font-size: 0.9em; overflow: auto; overflow-scrolling: touch; padding-top: 10px; padding-bottom: 10px; padding-left: 20px; padding-right: 10px; margin-bottom: 20px; margin-top: 20px; text-size-adjust: 100%; line-height: 1.55em; font-weight: 400; border-radius: 6px; color: #595959; font-style: normal; text-align: left; box-sizing: inherit; border-left: none; border: 1px solid #1b900d; background: #fff;"><span style="color: #74b56d; font-size: 34px; line-height: 1; font-weight: 700;">❝</span>
+<p style="padding-top: 8px; padding-bottom: 8px; letter-spacing: 2px; font-size: 16px; word-spacing: 2px; margin: 0px; color: black; line-height: 26px;">Time is fair, because it gives everyone 24 hours.</p>
+<span style="float: right; color: #74b56d;">❞</span></blockquote>
+]]></content>
+      <categories>
+        <category>技术文章</category>
+      </categories>
+      <tags>
+        <tag>微前端</tag>
+        <tag>qiankun</tag>
+        <tag>single-spa</tag>
+      </tags>
+  </entry>
+</search>

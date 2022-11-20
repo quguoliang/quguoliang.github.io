@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+<meta name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+<meta http-equiv="X-UA-Compatible" content="ie=edge">
+
+    <meta name="author" content="quguoliang">
+
+
+
+
+
+<script src="/js/jquery-2.0.3.min.js"></script>
+
+
+<script src="/js/jquery.justifiedGallery.min.js"></script>
+
+
+<link type="text/css" rel="stylesheet" href="//at.alicdn.com/t/font_3061293_3k2vjqu792g.css">
+<title>前端算法-链表、栈、队列 | 有点意思</title>
+
+
+
+    <link rel="icon" href="/smile.svg">
+
+
+
+
+    <!-- stylesheets list from _config.yml -->
+    
+    <link rel="stylesheet" href="/css/style.css">
+    
+
+
+
+    <!-- scripts list from _config.yml -->
+    
+    <script src="/js/script.js"></script>
+    
+    <script src="/js/tocbot.min.js"></script>
+    
+
+
+
+    
+    
+        
+    
+
+
+<meta name="generator" content="Hexo 5.4.0"></head>
+
+<body>
+    <script>
+        // this function is used to check current theme before page loaded.
+        (() => {
+            const currentTheme = window.localStorage && window.localStorage.getItem('theme') || '';
+            const isDark = currentTheme === 'dark';
+            const pagebody = document.getElementsByTagName('body')[0]
+            if (isDark) {
+                pagebody.classList.add('dark-theme');
+                // mobile
+                document.getElementById("mobile-toggle-theme").innerText = "· Dark"
+            } else {
+                pagebody.classList.remove('dark-theme');
+                // mobile
+                document.getElementById("mobile-toggle-theme").innerText = "· Light"
+            }
+        })();
+    </script>
+
+    <div class="wrapper">
+        <header>
+    <nav class="navbar">
+        <div class="container">
+            <div class="navbar-header header-logo"><a href="/">有点意思</a></div>
+            <div class="menu navbar-right">
+                
+                    <a class="menu-item" href="/category">分类</a>
+                
+                    <a class="menu-item" href="/archives">时间轴</a>
+                
+                    <a class="menu-item" href="/tag">标签</a>
+                
+                    <a class="menu-item" href="/about">关于</a>
+                
+                  <a class="menu-item menu-item-search" title="搜索">
+                    搜索
+                  </a>
+             
+                <input id="switch_default" type="checkbox" class="switch_default">
+                <label for="switch_default" class="toggleBtn"></label>
+            </div>
+        </div>
+    </nav>
+
+    
+    <nav class="navbar-mobile" id="nav-mobile">
+        <div class="container">
+            <div class="navbar-header">
+                <div>
+                    <a href="/">有点意思</a><a id="mobile-toggle-theme">·&nbsp;Light</a>
+                </div>
+                <div class="menu-toggle" onclick="mobileBtn()">&#9776; Menu</div>
+            </div>
+            <div class="menu" id="mobile-menu">
+                
+                    <a class="menu-item" href="/category">分类</a>
+                
+                    <a class="menu-item" href="/archives">时间轴</a>
+                
+                    <a class="menu-item" href="/tag">标签</a>
+                
+                    <a class="menu-item" href="/about">关于</a>
+                
+            </div>
+        </div>
+    </nav>
+    <div class="search-form-wrap">
+        <div class="local-search local-search-plugin">
+  <input type="search" id="local-search-input" class="local-search-input" placeholder="Search...">
+  <div id="local-search-result" class="local-search-result"></div>
+</div>
+    </div>
+</header>
+<script>
+    var mobileBtn = function f() {
+        var toggleMenu = document.getElementsByClassName("menu-toggle")[0];
+        var mobileMenu = document.getElementById("mobile-menu");
+        if(toggleMenu.classList.contains("active")){
+           toggleMenu.classList.remove("active")
+            mobileMenu.classList.remove("active")
+        }else{
+            toggleMenu.classList.add("active")
+            mobileMenu.classList.add("active")
+        }
+    }
+</script>
+            <div class="main">
+                <div class="container">
+    
+    
+        <div class="post-toc">
+    <div class="tocbot-list">
+    </div>
+    <div class="tocbot-list-menu">
+        <a class="tocbot-toc-expand" onclick="expand_toc()">全部</a>
+        <a onclick="go_bottom()">底部</a>
+    </div>
+    <i id='go-top' class="iconfont icon-huidaodingbu" style="display: none;" onclick="go_top()"></i>
+</div>
+
+<script>
+    let timer = null;
+    let beforeScrollTop = 0
+    window.addEventListener('scroll',(e)=>{
+        const afterScrollTop = document.documentElement.scrollTop
+        if(afterScrollTop>beforeScrollTop && timer){
+            clearInterval(timer)
+        }
+        const topEle = document.getElementById('go-top')
+        if(afterScrollTop > 100){
+            topEle.style.display='block'
+        }else{
+            topEle.style.display='none'
+        }
+        beforeScrollTop=afterScrollTop
+    })
+
+    document.ready(
+        function () {
+            tocbot.init({
+                tocSelector: '.tocbot-list',
+                contentSelector: '.post-content',
+                headingSelector: 'h1, h2, h3, h4, h5',
+                collapseDepth: 1,
+                orderedList: false,
+                scrollSmooth: true,
+            })
+        }
+    )
+
+    function expand_toc() {
+        var b = document.querySelector(".tocbot-toc-expand");
+        tocbot.init({
+            tocSelector: '.tocbot-list',
+            contentSelector: '.post-content',
+            headingSelector: 'h1, h2, h3, h4, h5',
+            collapseDepth: 6,
+            orderedList: false,
+            scrollSmooth: true,
+        });
+        b.setAttribute("onclick", "collapse_toc()");
+        b.innerHTML = "收起"
+    }
+
+    function collapse_toc() {
+        var b = document.querySelector(".tocbot-toc-expand");
+        tocbot.init({
+            tocSelector: '.tocbot-list',
+            contentSelector: '.post-content',
+            headingSelector: 'h1, h2, h3, h4, h5',
+            collapseDepth: 1,
+            orderedList: false,
+            scrollSmooth: true,
+        });
+        b.setAttribute("onclick", "expand_toc()");
+        b.innerHTML = "全部"
+    }
+
+    function go_top() {
+        timer=setInterval(function(){
+            var scrollTop=document.documentElement.scrollTop||document.body.scrollTop;
+            var ispeed=Math.floor(-scrollTop/6);
+            if(scrollTop==0){
+               clearInterval(timer);
+            }
+            document.documentElement.scrollTop=document.body.scrollTop=scrollTop+ispeed;
+        },30)
+        // window.scrollTo(0, 0);
+    }
+
+    function go_bottom() {
+        window.scrollTo(0, document.body.scrollHeight);
+    }
+
+</script>
+    
+
+    
+    <article class="post-wrap">
+        <header class="post-header">
+            <h1 class="post-title">前端算法-链表、栈、队列</h1>
+            
+                <div class="post-meta">
+                    
+                        作者: <a itemprop="author" rel="author" href="/">quguoliang</a>
+                    
+
+                    
+                        <span class="post-time" style="margin:0 15px 0 15px;">
+                        日期: <a href="#">2021-12-31 , 星期五&nbsp;&nbsp;14:54:31</a>
+                        </span>
+                    
+                    
+                        <span class="post-category">
+                    分类:
+                            
+                                <a href="/categories/%E5%89%8D%E7%AB%AF%E7%AE%97%E6%B3%95/">前端算法</a>
+                            
+                        </span>
+                    
+                </div>
+            
+        </header>
+
+        <div class="post-content">
+            <h2 id="链表题"><a href="#链表题" class="headerlink" title="链表题"></a>链表题</h2><h3 id="1、反转链表"><a href="#1、反转链表" class="headerlink" title="1、反转链表"></a>1、反转链表</h3><p><strong>题目描述</strong>：定义一个函数，输入一个链表的头结点，反转该链表并输出反转后链表的头结点。<br><strong>示例：</strong><br>输入: 1-&gt;2-&gt;3-&gt;4-&gt;5-&gt;NULL<br>输出: 5-&gt;4-&gt;3-&gt;2-&gt;1-&gt;NULL</p>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">let</span> list = &#123;</span><br><span class="line">  <span class="attr">val</span>:<span class="number">1</span>,</span><br><span class="line">  <span class="attr">next</span>:&#123;</span><br><span class="line">    <span class="attr">val</span>:<span class="number">2</span>,</span><br><span class="line">    <span class="attr">next</span>:&#123;</span><br><span class="line">      <span class="attr">val</span>:<span class="number">3</span>,</span><br><span class="line">      <span class="attr">next</span>:&#123;</span><br><span class="line">        <span class="attr">val</span>:<span class="number">4</span>,</span><br><span class="line">        <span class="attr">next</span>:&#123;</span><br><span class="line">          <span class="attr">val</span>:<span class="number">5</span>,</span><br><span class="line">          <span class="attr">next</span>:<span class="literal">null</span></span><br><span class="line">        &#125;</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">reverseList</span>(<span class="params">list</span>)</span>&#123;</span><br><span class="line">  <span class="keyword">let</span> pre = <span class="literal">null</span></span><br><span class="line">  <span class="keyword">let</span> cur = list</span><br><span class="line"></span><br><span class="line">  <span class="keyword">while</span>(cur !== <span class="literal">null</span>)&#123;</span><br><span class="line">    <span class="keyword">let</span> next = cur.next</span><br><span class="line">    cur.next = pre</span><br><span class="line">    pre = cur</span><br><span class="line">    cur = next</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">return</span> pre</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p><strong>思路：</strong>此处主要涉及三个变量，pre前驱节点，cur当前节点，next后继节点，循环链表，每次处理链表的三个节点的关系，保存cur的后继节点，转换cur的指针指向pre，然后pre、cur都前进一步，进行下次循环。</p>
+<h3 id="2、局部反转链表"><a href="#2、局部反转链表" class="headerlink" title="2、局部反转链表"></a>2、局部反转链表</h3><p><strong>题目描述：</strong>反转从位置 m 到 n 的链表。请使用一趟扫描完成反转。<br><strong>说明：</strong>1 ≤ m ≤ n ≤ 链表长度。<br><strong>示例:</strong><br>输入: 1-&gt;2-&gt;3-&gt;4-&gt;5-&gt;NULL, m = 2, n = 4<br>输出: 1-&gt;4-&gt;3-&gt;2-&gt;5-&gt;NULL</p>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">let</span> list = &#123;</span><br><span class="line">  <span class="attr">val</span>:<span class="number">1</span>,</span><br><span class="line">  <span class="attr">next</span>:&#123;</span><br><span class="line">    <span class="attr">val</span>:<span class="number">2</span>,</span><br><span class="line">    <span class="attr">next</span>:&#123;</span><br><span class="line">      <span class="attr">val</span>:<span class="number">3</span>,</span><br><span class="line">      <span class="attr">next</span>:&#123;</span><br><span class="line">        <span class="attr">val</span>:<span class="number">4</span>,</span><br><span class="line">        <span class="attr">next</span>:&#123;</span><br><span class="line">          <span class="attr">val</span>:<span class="number">5</span>,</span><br><span class="line">          <span class="attr">next</span>:<span class="literal">null</span></span><br><span class="line">        &#125;</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">reverseList</span>(<span class="params">list,m,n</span>)</span>&#123;</span><br><span class="line">  <span class="keyword">const</span> dummy = &#123;<span class="attr">val</span>:<span class="literal">null</span>,<span class="attr">next</span>:<span class="literal">null</span>&#125;;</span><br><span class="line">  dummy.next = list;</span><br><span class="line">  <span class="keyword">let</span> p = dummy</span><br><span class="line">  <span class="keyword">for</span>(<span class="keyword">let</span> i = <span class="number">0</span>; i&lt;m-<span class="number">1</span>;i++)&#123;</span><br><span class="line">    p = p.next</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">let</span> leftHead = p;</span><br><span class="line">  <span class="keyword">let</span> pre = leftHead.next;</span><br><span class="line">  <span class="keyword">let</span> start = pre;</span><br><span class="line">  <span class="keyword">let</span> cur = pre.next;</span><br><span class="line">  <span class="keyword">for</span>(<span class="keyword">let</span> i=m;i&lt;n;i++)&#123;</span><br><span class="line">    <span class="keyword">let</span> next = cur.next;</span><br><span class="line">    cur.next = pre;</span><br><span class="line">    pre = cur;</span><br><span class="line">    cur = next;</span><br><span class="line">  &#125;</span><br><span class="line">  leftHead.next = pre;</span><br><span class="line">  start.next = cur;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">return</span> dummy.next</span><br><span class="line"></span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+<p><strong>思路：</strong> 整体思路应该是将链表切割成三份，m之前和n之后的部分都不需要进行更改，只需将m-n之间链表进行反转，然后在将三部分进行链接即可，具体处理首先设置一个空节点作为整个链表的前置节点，然后遍历链表找到m所处位置，缓存下来作为left部分，同时缓存中间部分第一个节点即left.next为start，然后从此开始到n结束，继续遍历剩下链表，同时将链表反转，遍历过后，pre节点指向中间部分的最后一个节点，cur指向n之后的第一个节点，所以只需将left.next指向pre节点，将start指向cur即完成本次反转。</p>
+<h3 id="3、环形链表定位问题"><a href="#3、环形链表定位问题" class="headerlink" title="3、环形链表定位问题"></a>3、环形链表定位问题</h3><p><strong>题目描述：</strong>给定一个链表，返回链表开始入环的第一个节点。如果链表无环，则返回null<br><strong>示例:</strong><br>输入: head = [3,2,0,-4]（如下图）<br>输出：tail connects to node index 1<br>解释：链表中有一个环，其尾部连接到第二个结点。<br><img src="https://p1-jj.byteimg.com/tos-cn-i-t2oaga2asx/gold-user-assets/2020/3/29/1712658d244622c4~tplv-t2oaga2asx-watermark.awebp" alt="图片"></p>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">detectCycle</span>(<span class="params">list</span>)</span>&#123;</span><br><span class="line">  <span class="keyword">while</span>(list)&#123;</span><br><span class="line">    <span class="keyword">if</span>(list.flag)&#123;</span><br><span class="line">      <span class="keyword">return</span> list</span><br><span class="line">    &#125;<span class="keyword">else</span>&#123;</span><br><span class="line">      list.flag = <span class="literal">true</span>;</span><br><span class="line">      list = list.next;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">return</span> <span class="literal">null</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p><strong>思路：</strong>整体思路不难理解，环形链表的解题思路统一采用标记法，即遍历链表，给每一个链表节点打上标记flag，如果遍历过程中发现节点flag为true。即代表当前节点为被环形链表的节点，又因其第一个被循环到，所以一定是环形节点的第一个节点。</p>
+<h2 id="栈问题"><a href="#栈问题" class="headerlink" title="栈问题"></a>栈问题</h2><h3 id="4、有效括号问题"><a href="#4、有效括号问题" class="headerlink" title="4、有效括号问题"></a>4、有效括号问题</h3><p><strong>题目描述：</strong> 给定一个只包括 ‘(‘，’)’，’{‘，’}’，’[‘，’]’ 的字符串，判断字符串是否有效。<br><strong>有效字符串需满足：</strong><br>左括号必须用相同类型的右括号闭合。<br>左括号必须以正确的顺序闭合。<br>注意空字符串可被认为是有效字符串。<br><strong>示例：</strong><br>输入：’()’<br>输出：true</p>
+<p>输入：’(]’<br>输出：false</p>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">isValid</span>(<span class="params">str</span>)</span>&#123;</span><br><span class="line">  <span class="keyword">const</span> leftRightMap = &#123;</span><br><span class="line">    <span class="string">&#x27;[&#x27;</span>:<span class="string">&#x27;]&#x27;</span>,</span><br><span class="line">    <span class="string">&#x27;&#123;&#x27;</span>:<span class="string">&#x27;&#125;&#x27;</span>,</span><br><span class="line">    <span class="string">&#x27;(&#x27;</span>:<span class="string">&#x27;)&#x27;</span></span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">if</span>(!str || str.length &lt;= <span class="number">1</span>)&#123;</span><br><span class="line">    <span class="keyword">return</span> <span class="literal">false</span></span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">const</span> stack = [];</span><br><span class="line">  </span><br><span class="line">  <span class="keyword">for</span>(<span class="keyword">let</span> i=<span class="number">0</span>; i&lt;str.length;i++)&#123;</span><br><span class="line">    <span class="keyword">if</span>(str[i]===<span class="string">&#x27;(&#x27;</span>||str[i]===<span class="string">&#x27;[&#x27;</span>||str[i]===<span class="string">&#x27;&#123;&#x27;</span>)&#123;</span><br><span class="line">      stack.push(leftRightMap[str[i]])</span><br><span class="line">    &#125;<span class="keyword">else</span>&#123;</span><br><span class="line">      <span class="keyword">if</span>(!stack.length || stack.pop()!==str[i])&#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="literal">false</span></span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">return</span> !stack.length</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="built_in">console</span>.log(isValid(<span class="string">&#x27;[&#123;()&#123;&#125;&#125;]&#x27;</span>))</span><br></pre></td></tr></table></figure>
+
+<p><strong>思路：</strong>第一眼看上去有点像回文串，但是仔细一看并不是，左右括号并不相等，具体看，括号限制的很死只有(){}[]这三种，所以必定是从中间切割，左右相互照应，因此先创建一个左右之间的映射关系leftRightMap，同时采用栈的思想，先进后出，循环整个字符串，采用另一个stack数组来存放与之对应的字符，如果是{[(这三种，就向stack中push一个对应字符，如果是}])这三种，就在stack中的尾部判断是否字符一致，如果一致，则消除这两个，如果不一致，则返回失败，最后，如果循环结束stack中还存在值，则表示false，否则相反。</p>
+<h3 id="5、每日温度问题"><a href="#5、每日温度问题" class="headerlink" title="5、每日温度问题"></a>5、每日温度问题</h3><p><strong>题目描述：</strong> 根据每日气温列表，请重新生成一个列表，对应位置的输出是需要再等待多久温度才会升高超过该日的天数。如果之后都不会升高，请在该位置用 0 来代替。<br><strong>示例：</strong>给定一个列表 temperatures = [73, 74, 75, 71, 69, 72, 76, 73]，你的输出应该是 [1, 1, 4, 2, 1, 1, 0, 0]。<br><strong>提示：</strong>气温 列表长度的范围是 [1, 30000]。每个气温的值的均为华氏度，都是在 [30, 100] 范围内的整数。</p>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">const</span> temArr = [<span class="number">73</span>,<span class="number">74</span>,<span class="number">75</span>,<span class="number">71</span>,<span class="number">69</span>,<span class="number">72</span>,<span class="number">76</span>,<span class="number">73</span>]</span><br><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">handleTemper</span>(<span class="params">temArr</span>)</span>&#123;</span><br><span class="line">  <span class="keyword">const</span> len = temArr.length</span><br><span class="line">  <span class="keyword">const</span> res = (<span class="keyword">new</span> <span class="built_in">Array</span>(len)).fill(<span class="number">0</span>) </span><br><span class="line">  <span class="keyword">const</span> stack = []</span><br><span class="line"></span><br><span class="line">  <span class="keyword">for</span>(<span class="keyword">let</span> i=<span class="number">0</span>;i&lt;len;i++)&#123;</span><br><span class="line">    <span class="keyword">while</span>(stack.length &amp;&amp; temArr[i]&gt;temArr[stack[stack.length-<span class="number">1</span>]])&#123;</span><br><span class="line">      <span class="keyword">const</span> top = stack.pop();</span><br><span class="line">      res[top] = i - top;</span><br><span class="line">    &#125;</span><br><span class="line">    stack.push(i)</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">return</span> res</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="built_in">console</span>.log(handleTemper(temArr));</span><br></pre></td></tr></table></figure>
+<p><strong>解题思路：</strong>这个题目刚开始读起来有点难理解，理解后第一个想法应该是双重for循环即可解答，不过一般双重循环都是不合适的，所以需要另一种方法来解。同样采用栈的思想，循环数组，用一个栈stack来维护一个<strong>单调递减</strong>值的数组下标，当值循环到一个值打破了递减规律的时候，只需要去循环一下栈数组，求当前值的下标与stack数组存储下标的差值，即为天数。思路有点饶，感觉有点难想到。</p>
+<h3 id="6、最小栈问题"><a href="#6、最小栈问题" class="headerlink" title="6、最小栈问题"></a>6、最小栈问题</h3><p><strong>题目描述：</strong>设计一个支持 push ，pop ，top 操作，并能在常数时间内检索到最小元素的栈。<br>pop() —— 删除栈顶的元素。<br>top() —— 获取栈顶元素。<br>getMin() —— 检索栈中的最小元素。<br><strong>示例：</strong><br>MinStack minStack = new MinStack();<br>minStack.push(-2);<br>minStack.push(0);<br>minStack.push(-3);<br>minStack.getMin(); –&gt; 返回 -3.<br>minStack.pop();<br>minStack.top(); –&gt; 返回 0.<br>minStack.getMin(); –&gt; 返回 -2.</p>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">MinStack</span> </span>&#123;</span><br><span class="line">  <span class="function"><span class="title">constructor</span>(<span class="params"></span>)</span>&#123;</span><br><span class="line">     <span class="built_in">this</span>.stack= []</span><br><span class="line">     <span class="built_in">this</span>.minStack = []</span><br><span class="line">  &#125;</span><br><span class="line"> </span><br><span class="line">  <span class="function"><span class="title">push</span>(<span class="params">p</span>)</span> &#123;</span><br><span class="line">    <span class="built_in">this</span>.stack.push(p)</span><br><span class="line">    <span class="keyword">if</span>(<span class="built_in">this</span>.minStack.length===<span class="number">0</span> || <span class="built_in">this</span>.minStack[<span class="built_in">this</span>.minStack.length-<span class="number">1</span>] &gt;= p)&#123;</span><br><span class="line">      <span class="built_in">this</span>.minStack.push(p)</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="title">pop</span>(<span class="params"></span>)</span>&#123;</span><br><span class="line">    <span class="keyword">if</span>(<span class="built_in">this</span>.stack.pop() ===<span class="built_in">this</span>.minStack[<span class="built_in">this</span>.minStack.length-<span class="number">1</span>])&#123;</span><br><span class="line">      <span class="built_in">this</span>.minStack.pop()</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="title">top</span>(<span class="params"></span>)</span>&#123;</span><br><span class="line">    <span class="keyword">return</span> <span class="built_in">this</span>.stack[<span class="built_in">this</span>.stack.length-<span class="number">1</span>]</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="title">getMin</span>(<span class="params"></span>)</span>&#123;</span><br><span class="line">    <span class="keyword">return</span> <span class="built_in">this</span>.minStack[<span class="built_in">this</span>.minStack.length-<span class="number">1</span>]</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p><strong>解题思路：</strong>这个题其实不难理解，push、pop都可以用数组原生方法实现，getMin最差也可以通过循环得到，时间复杂度是O(n)，以上时间复杂度是O1，增加了一个minStack用来存储一个<strong>单调递减</strong>的队列，每次只需要返回队列栈顶即可。</p>
+<h2 id="队列问题"><a href="#队列问题" class="headerlink" title="队列问题"></a>队列问题</h2><h3 id="7、滑动窗口问题"><a href="#7、滑动窗口问题" class="headerlink" title="7、滑动窗口问题"></a>7、滑动窗口问题</h3><p><strong>题目描述：</strong>给定一个数组 nums 和滑动窗口的大小 k，请找出所有滑动窗口里的最大值。<br><strong>示例：</strong><br>输入: nums = [1,3,-1,-3,5,3,6,7], 和 k = 3<br>输出: [3,3,5,5,6,7]<br>解释: 滑动窗口的位置<br>[1 3 -1] -3 5 3 6 7<br>1 [3 -1 -3] 5 3 6 7<br>1 3 [-1 -3 5] 3 6 7<br>1 3 -1 [-3 5 3] 6 7<br>1 3 -1 -3 [5 3 6] 7<br>1 3 -1 -3 5 [3 6 7]</p>
+<p>最大值分别对应：3 3 5 5 6 7<br><strong>提示：</strong>你可以假设 k 总是有效的，在输入数组不为空的情况下，1 ≤ k ≤ 输入数组的大小。</p>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">const</span> nums = [<span class="number">1</span>,<span class="number">3</span>,-<span class="number">1</span>,-<span class="number">3</span>,<span class="number">5</span>,<span class="number">3</span>,<span class="number">6</span>,<span class="number">7</span>]</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">findMax</span>(<span class="params">nums,k</span>)</span>&#123;</span><br><span class="line">  <span class="keyword">if</span>(!nums||!k)&#123;</span><br><span class="line">    <span class="keyword">return</span> []</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">if</span>(nums.length &lt;= k)&#123;</span><br><span class="line">    <span class="keyword">const</span> list = nums.sort(<span class="function">(<span class="params">a,b</span>)=&gt;</span>a-b)</span><br><span class="line">    <span class="keyword">return</span> [list[list.length-<span class="number">1</span>]]</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">const</span> res = []</span><br><span class="line">  <span class="keyword">for</span>(<span class="keyword">let</span> i = <span class="number">0</span>;i&lt;nums.length;i++)&#123;</span><br><span class="line">    <span class="keyword">let</span> max = nums[i]</span><br><span class="line">    <span class="keyword">let</span> m = i</span><br><span class="line">    <span class="keyword">while</span>(m  &lt;= k-<span class="number">1</span>+i)&#123;</span><br><span class="line">      <span class="keyword">if</span>(nums[m]&gt;max)&#123;</span><br><span class="line">        max=nums[m]   </span><br><span class="line">      &#125;</span><br><span class="line">      m++</span><br><span class="line">    &#125;</span><br><span class="line">    res.push(max)</span><br><span class="line">    <span class="keyword">if</span>(m &gt; nums.length-<span class="number">1</span>)&#123;</span><br><span class="line">      <span class="keyword">return</span> res</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"><span class="built_in">console</span>.log(findMax(nums,<span class="number">3</span>));</span><br></pre></td></tr></table></figure>
+        </div>
+
+        
+        <section class="post-tags">
+            <div>
+                <span>标签:</span>
+                <span class="tag">
+                    
+                    
+                        <a href="/tags/%E5%88%B7%E9%A2%98/"># 刷题</a>
+                    
+                        <a href="/tags/%E7%AE%97%E6%B3%95/"># 算法</a>
+                    
+                        
+                </span>
+            </div>
+            <div>
+                <a href="javascript:window.history.back();">返回</a>
+                <span>· </span>
+                <a href="/">首页</a>
+            </div>
+        </section>
+        <section class="post-nav">
+            
+                <a class="prev" rel="prev" href="/2022/01/04/%E5%87%8F%E8%82%A5%E6%97%A5%E8%AE%B01/">减肥日记1</a>
+            
+            
+            <a class="next" rel="next" href="/2021/12/31/%E5%BE%AE%E5%89%8D%E7%AB%AF%E7%9A%84%E8%AE%BE%E8%AE%A1%E4%B8%8E%E5%AE%9E%E7%8E%B0/">微前端的设计与实现</a>
+            
+        </section>
+
+
+    </article>
+</div>
+
+            </div>
+            <footer id="footer" class="footer">
+    <div class="copyright">
+        <span>© quguoliang</span>
+    </div>
+</footer>
+
+    </div>
+    
+<script src="/js/search.js"></script>
+
+</body>
+
+</html>

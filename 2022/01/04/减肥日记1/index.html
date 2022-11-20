@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+<meta name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+<meta http-equiv="X-UA-Compatible" content="ie=edge">
+
+    <meta name="author" content="quguoliang">
+
+
+
+
+
+<script src="/js/jquery-2.0.3.min.js"></script>
+
+
+<script src="/js/jquery.justifiedGallery.min.js"></script>
+
+
+<link type="text/css" rel="stylesheet" href="//at.alicdn.com/t/font_3061293_3k2vjqu792g.css">
+<title>减肥日记1 | 有点意思</title>
+
+
+
+    <link rel="icon" href="/smile.svg">
+
+
+
+
+    <!-- stylesheets list from _config.yml -->
+    
+    <link rel="stylesheet" href="/css/style.css">
+    
+
+
+
+    <!-- scripts list from _config.yml -->
+    
+    <script src="/js/script.js"></script>
+    
+    <script src="/js/tocbot.min.js"></script>
+    
+
+
+
+    
+    
+        
+    
+
+
+<meta name="generator" content="Hexo 5.4.0"></head>
+
+<body>
+    <script>
+        // this function is used to check current theme before page loaded.
+        (() => {
+            const currentTheme = window.localStorage && window.localStorage.getItem('theme') || '';
+            const isDark = currentTheme === 'dark';
+            const pagebody = document.getElementsByTagName('body')[0]
+            if (isDark) {
+                pagebody.classList.add('dark-theme');
+                // mobile
+                document.getElementById("mobile-toggle-theme").innerText = "· Dark"
+            } else {
+                pagebody.classList.remove('dark-theme');
+                // mobile
+                document.getElementById("mobile-toggle-theme").innerText = "· Light"
+            }
+        })();
+    </script>
+
+    <div class="wrapper">
+        <header>
+    <nav class="navbar">
+        <div class="container">
+            <div class="navbar-header header-logo"><a href="/">有点意思</a></div>
+            <div class="menu navbar-right">
+                
+                    <a class="menu-item" href="/category">分类</a>
+                
+                    <a class="menu-item" href="/archives">时间轴</a>
+                
+                    <a class="menu-item" href="/tag">标签</a>
+                
+                    <a class="menu-item" href="/about">关于</a>
+                
+                  <a class="menu-item menu-item-search" title="搜索">
+                    搜索
+                  </a>
+             
+                <input id="switch_default" type="checkbox" class="switch_default">
+                <label for="switch_default" class="toggleBtn"></label>
+            </div>
+        </div>
+    </nav>
+
+    
+    <nav class="navbar-mobile" id="nav-mobile">
+        <div class="container">
+            <div class="navbar-header">
+                <div>
+                    <a href="/">有点意思</a><a id="mobile-toggle-theme">·&nbsp;Light</a>
+                </div>
+                <div class="menu-toggle" onclick="mobileBtn()">&#9776; Menu</div>
+            </div>
+            <div class="menu" id="mobile-menu">
+                
+                    <a class="menu-item" href="/category">分类</a>
+                
+                    <a class="menu-item" href="/archives">时间轴</a>
+                
+                    <a class="menu-item" href="/tag">标签</a>
+                
+                    <a class="menu-item" href="/about">关于</a>
+                
+            </div>
+        </div>
+    </nav>
+    <div class="search-form-wrap">
+        <div class="local-search local-search-plugin">
+  <input type="search" id="local-search-input" class="local-search-input" placeholder="Search...">
+  <div id="local-search-result" class="local-search-result"></div>
+</div>
+    </div>
+</header>
+<script>
+    var mobileBtn = function f() {
+        var toggleMenu = document.getElementsByClassName("menu-toggle")[0];
+        var mobileMenu = document.getElementById("mobile-menu");
+        if(toggleMenu.classList.contains("active")){
+           toggleMenu.classList.remove("active")
+            mobileMenu.classList.remove("active")
+        }else{
+            toggleMenu.classList.add("active")
+            mobileMenu.classList.add("active")
+        }
+    }
+</script>
+            <div class="main">
+                <div class="container">
+    
+    
+        <div class="post-toc">
+    <div class="tocbot-list">
+    </div>
+    <div class="tocbot-list-menu">
+        <a class="tocbot-toc-expand" onclick="expand_toc()">全部</a>
+        <a onclick="go_bottom()">底部</a>
+    </div>
+    <i id='go-top' class="iconfont icon-huidaodingbu" style="display: none;" onclick="go_top()"></i>
+</div>
+
+<script>
+    let timer = null;
+    let beforeScrollTop = 0
+    window.addEventListener('scroll',(e)=>{
+        const afterScrollTop = document.documentElement.scrollTop
+        if(afterScrollTop>beforeScrollTop && timer){
+            clearInterval(timer)
+        }
+        const topEle = document.getElementById('go-top')
+        if(afterScrollTop > 100){
+            topEle.style.display='block'
+        }else{
+            topEle.style.display='none'
+        }
+        beforeScrollTop=afterScrollTop
+    })
+
+    document.ready(
+        function () {
+            tocbot.init({
+                tocSelector: '.tocbot-list',
+                contentSelector: '.post-content',
+                headingSelector: 'h1, h2, h3, h4, h5',
+                collapseDepth: 1,
+                orderedList: false,
+                scrollSmooth: true,
+            })
+        }
+    )
+
+    function expand_toc() {
+        var b = document.querySelector(".tocbot-toc-expand");
+        tocbot.init({
+            tocSelector: '.tocbot-list',
+            contentSelector: '.post-content',
+            headingSelector: 'h1, h2, h3, h4, h5',
+            collapseDepth: 6,
+            orderedList: false,
+            scrollSmooth: true,
+        });
+        b.setAttribute("onclick", "collapse_toc()");
+        b.innerHTML = "收起"
+    }
+
+    function collapse_toc() {
+        var b = document.querySelector(".tocbot-toc-expand");
+        tocbot.init({
+            tocSelector: '.tocbot-list',
+            contentSelector: '.post-content',
+            headingSelector: 'h1, h2, h3, h4, h5',
+            collapseDepth: 1,
+            orderedList: false,
+            scrollSmooth: true,
+        });
+        b.setAttribute("onclick", "expand_toc()");
+        b.innerHTML = "全部"
+    }
+
+    function go_top() {
+        timer=setInterval(function(){
+            var scrollTop=document.documentElement.scrollTop||document.body.scrollTop;
+            var ispeed=Math.floor(-scrollTop/6);
+            if(scrollTop==0){
+               clearInterval(timer);
+            }
+            document.documentElement.scrollTop=document.body.scrollTop=scrollTop+ispeed;
+        },30)
+        // window.scrollTo(0, 0);
+    }
+
+    function go_bottom() {
+        window.scrollTo(0, document.body.scrollHeight);
+    }
+
+</script>
+    
+
+    
+    <article class="post-wrap">
+        <header class="post-header">
+            <h1 class="post-title">减肥日记1</h1>
+            
+                <div class="post-meta">
+                    
+                        作者: <a itemprop="author" rel="author" href="/">quguoliang</a>
+                    
+
+                    
+                        <span class="post-time" style="margin:0 15px 0 15px;">
+                        日期: <a href="#">2022-01-04 , 星期二&nbsp;&nbsp;10:57:51</a>
+                        </span>
+                    
+                    
+                        <span class="post-category">
+                    分类:
+                            
+                                <a href="/categories/%E5%87%8F%E8%82%A5%E6%97%A5%E8%AE%B0/">减肥日记</a>
+                            
+                        </span>
+                    
+                </div>
+            
+        </header>
+
+        <div class="post-content">
+            <p>今天是2022年1月4日，星期二，元旦假期后的第一天，距离过年还有27天，我又打算开始新一轮的减肥了，虽然前面成功过一次，从103kg减肥到90kg，但是这一年谈恋爱后就有点放肆了，体重成功回弹，前一段时间说减肥一直都下不下心来，一到周末就开始放肆，本次确实要认真的减肥了，其实减肥也不算很难，最最重要的就是管住嘴，所以本次减肥先以一个月为期限，主要计划如下：</p>
+<h3 id="第一周"><a href="#第一周" class="headerlink" title="第一周"></a>第一周</h3><blockquote>
+<p>第一周正常吃饭，晚上七点以后不吃东西<br> <strong>早餐：</strong><br> 五谷磨房的冲剂；<br> <strong>午餐：</strong><br> 公司正常吃饭；<br> <strong>晚餐：</strong><br> 吃减脂外卖；<br> <strong>周末：</strong><br> 可酌情配餐，禁止大鱼大肉、零食等。</p>
+</blockquote>
+<p>运动方面：本周保证至少运动3次，运动形式不限，不过一般也就是健身房椭圆机或者力量训练，这次先不打算开启跑步。</p>
+<p>另外，除了吃饭以外，规律作息特别重要，本周主要在于调节作息，最近总是在1点开始睡觉，导致胃火严重，还特意去做了一个胃镜，难受到死，所以本周一定要规律作息，11：30准时关灯睡觉，早上7：30起床。</p>
+<h3 id="第二周"><a href="#第二周" class="headerlink" title="第二周"></a>第二周</h3><blockquote>
+<p>过午不食<br> <strong>早餐：</strong><br> 五谷磨房的冲剂；<br> <strong>午餐：</strong><br> 公司正常吃饭；<br> <strong>晚餐：</strong><br> 不吃，下午四点吃一个水果，多喝水。<br> <strong>周末：</strong><br> 可酌情配餐，禁止大鱼大肉、零食等。</p>
+</blockquote>
+<p> 运动方面：本周至少保证运动4次，运动形式不限。</p>
+<h3 id="第三周"><a href="#第三周" class="headerlink" title="第三周"></a>第三周</h3><blockquote>
+<p>晚餐隔天吃<br> <strong>早餐：</strong><br> 五谷磨房的冲剂；<br> <strong>午餐：</strong><br> 公司正常吃饭；<br> <strong>晚餐：</strong><br> 隔天吃，一天吃一天不吃，下午四点吃一个水果，多喝水。<br> <strong>周末：</strong><br> 可酌情配餐，禁止大鱼大肉、零食等。</p>
+</blockquote>
+<p> 运动方面：本周至少保证运动4次，运动形式不限。</p>
+<h3 id="第四周"><a href="#第四周" class="headerlink" title="第四周"></a>第四周</h3><blockquote>
+<p>看情况具体执行，最低限度是晚餐隔天吃，如果效果不好，或者可以接受，可以执行第二周的计划<br> <strong>早餐：</strong><br> 五谷磨房的冲剂；<br> <strong>午餐：</strong><br> 公司正常吃饭；<br> <strong>晚餐：</strong><br> 隔天吃，一天吃一天不吃，下午四点吃一个水果，多喝水。<br> <strong>周末：</strong><br> 可酌情配餐，禁止大鱼大肉、零食等。</p>
+</blockquote>
+<p> 运动方面：本周至少保证运动4次，运动形式不限。</p>
+<p>减肥还是主要靠毅力了，根据以前的经验，只要熬过第一周，后面就会逐渐成为习惯，也就慢慢的接受了，所以还是要努力啊！！！本来说年底要瘦到80kg的，哎，难受，不过还是得加油，争取在4月减肥到80kg。后面我会不定期记录的，祝我成功！</p>
+
+        </div>
+
+        
+        <section class="post-tags">
+            <div>
+                <span>标签:</span>
+                <span class="tag">
+                    
+                    
+                        <a href="/tags/%E5%87%8F%E8%82%A5/"># 减肥</a>
+                    
+                        
+                </span>
+            </div>
+            <div>
+                <a href="javascript:window.history.back();">返回</a>
+                <span>· </span>
+                <a href="/">首页</a>
+            </div>
+        </section>
+        <section class="post-nav">
+            
+                <a class="prev" rel="prev" href="/2022/01/05/%E5%87%8F%E8%82%A5%E6%97%A5%E8%AE%B02/">减肥日记2</a>
+            
+            
+            <a class="next" rel="next" href="/2021/12/31/%E5%89%8D%E7%AB%AF%E7%AE%97%E6%B3%95-%E9%93%BE%E8%A1%A8%E3%80%81%E6%A0%88%E3%80%81%E9%98%9F%E5%88%97/">前端算法-链表、栈、队列</a>
+            
+        </section>
+
+
+    </article>
+</div>
+
+            </div>
+            <footer id="footer" class="footer">
+    <div class="copyright">
+        <span>© quguoliang</span>
+    </div>
+</footer>
+
+    </div>
+    
+<script src="/js/search.js"></script>
+
+</body>
+
+</html>
